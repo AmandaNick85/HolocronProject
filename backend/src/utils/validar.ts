@@ -1,3 +1,16 @@
+export const DECKS_VALIDOS = [
+  'jedi',
+  'sith',
+  'rebeldes',
+  'imperio',
+  'republica',
+  'separatistas',
+  'mandalorianos',
+  'cacadores',
+  'avulso',
+] as const;
+export type DeckId = (typeof DECKS_VALIDOS)[number];
+
 export const STATUS_VALIDOS = ['Para Explorar', 'Estudando', 'Dominado', 'Favorito'] as const;
 export type StatusEstudo = (typeof STATUS_VALIDOS)[number];
 
@@ -55,6 +68,13 @@ export function categoriaValida(valor: unknown): Categoria | { erro: string } {
     return { erro: 'Categoria inválida.' };
   }
   return valor as Categoria;
+}
+
+export function deckValido(valor: unknown): DeckId | { erro: string } {
+  if (typeof valor !== 'string' || !DECKS_VALIDOS.includes(valor as DeckId)) {
+    return { erro: 'Escolha um deck.' };
+  }
+  return valor as DeckId;
 }
 
 export function statusValido(valor: unknown): StatusEstudo | { erro: string } {

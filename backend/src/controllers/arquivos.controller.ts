@@ -6,14 +6,42 @@ import {
   type ArquivoRegistro,
 } from '../database/conexao';
 import type { RequisicaoAutenticada } from '../middlewares/authMiddleware';
+import { ladoDaCarta, ROTULO_LADO } from '../utils/lado';
 import {
   categoriaValida,
+  deckValido,
   falhou,
   inteiroEntre,
   statusValido,
   texto,
+  type DeckId,
   type StatusEstudo,
 } from '../utils/validar';
+
+function encaixar(
+  userId: string,
+  deckId: string,
+  nome: string,
+  descricao: string,
+): { deck: Exclude<DeckId, 'avulso'>; deck_id: string } | { erro: string } {
+  const linha = obterBanco()
+    .prepare('SELECT faccao FROM decks WHERE id = ? AND user_id = ?')
+    .get(deckId, userId) as { faccao: string } | undefined;
+  if (!linha || !(linha.faccao in ROTULO_LADO)) {
+    return { erro: 'Deck não encontrado.' };
+  }
+  const lado = ladoDaCarta(`${nome}\n${descricao}`);
+  const faccao = linha.faccao as Exclude<DeckId, 'avulso'>;
+  if (!lado) {
+    return {
+      erro: 'Esta carta não pertence a um lado. Só entram Jedi, Sith, Rebeldes, Império, República, Separatistas, Mandalorianos e Caçadores.',
+    };
+  }
+  if (lado !== faccao) {
+    return { erro: `Esta carta é ${ROTULO_LADO[lado]} e só entra em um deck ${ROTULO_LADO[lado]}.` };
+  }
+  return { deck: lado, deck_id: deckId };
+}
 
 function exigirUsuario(req: RequisicaoAutenticada, res: Response): string | null {
   if (!req.userId) {
@@ -51,6 +79,7 @@ export function criar(req: RequisicaoAutenticada, res: Response): void {
   }
 
   const statusInformado = req.body?.status === undefined ? 'Para Explorar' : statusValido(req.body.status);
+  const deckInformado = req.body?.deck === undefined ? 'avulso' : deckValido(req.body.deck);
   const progressoInformado = req.body?.progresso === undefined ? 0 : inteiroEntre(req.body.progresso, 'Progresso', 0, 100);
   const notaInformada = req.body?.nota === undefined ? 0 : inteiroEntre(req.body.nota, 'Nota', 0, 10);
   const anotacaoInformada =
@@ -58,10 +87,28 @@ export function criar(req: RequisicaoAutenticada, res: Response): void {
       ? ''
       : texto(req.body.anotacao, 'Anotação', 4000);
 
-  if (falhou(statusInformado) || falhou(progressoInformado) || falhou(notaInformada) || falhou(anotacaoInformada)) {
-    const primeiro = [statusInformado, progressoInformado, notaInformada, anotacaoInformada].find(falhou);
+  if (
+    falhou(statusInformado) ||
+    falhou(deckInformado) ||
+    falhou(progressoInformado) ||
+    falhou(notaInformada) ||
+    falhou(anotacaoInformada)
+  ) {
+    const primeiro = [statusInformado, deckInformado, progressoInformado, notaInformada, anotacaoInformada].find(falhou);
     res.status(400).json({ erro: primeiro?.erro ?? 'Dados inválidos.' });
     return;
+  }
+
+  let deckGravado = deckInformado as string;
+  let deckId: string | null = null;
+  if (typeof req.body?.deck_id === 'string' && req.body.deck_id.trim()) {
+    const encaixe = encaixar(userId, req.body.deck_id.trim(), nome, descricao);
+    if ('erro' in encaixe) {
+      res.status(400).json({ erro: encaixe.erro });
+      return;
+    }
+    deckGravado = encaixe.deck;
+    deckId = encaixe.deck_id;
   }
 
   const banco = obterBanco();
@@ -70,7 +117,7 @@ export function criar(req: RequisicaoAutenticada, res: Response): void {
     .get(userId, itemId) as { id: string } | undefined;
 
   if (duplicado) {
-    res.status(409).json({ erro: 'Essa entrada já está no Holocron.' });
+    res.status(409).json({ erro: 'Essa carta já está em um deck.' });
     return;
   }
 
@@ -86,14 +133,16 @@ export function criar(req: RequisicaoAutenticada, res: Response): void {
     progresso: progressoInformado,
     nota: notaInformada,
     anotacao: anotacaoInformada,
+    deck: deckGravado,
+    deck_id: deckId,
     updated_at: new Date().toISOString(),
   };
 
   banco
     .prepare(
       `INSERT INTO arquivos (
-        id, user_id, item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, user_id, item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, deck, deck_id, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       registro.id,
@@ -107,6 +156,8 @@ export function criar(req: RequisicaoAutenticada, res: Response): void {
       registro.progresso,
       registro.nota,
       registro.anotacao,
+      registro.deck,
+      registro.deck_id,
       registro.updated_at,
     );
 
@@ -135,13 +186,27 @@ export function atualizar(req: RequisicaoAutenticada, res: Response): void {
 
   const corpo = req.body ?? {};
   const status = corpo.status === undefined ? atual.status : statusValido(corpo.status);
+  let deck = corpo.deck === undefined ? atual.deck ?? 'avulso' : deckValido(corpo.deck);
+  let deckId = atual.deck_id ?? null;
   const progresso = corpo.progresso === undefined ? atual.progresso : inteiroEntre(corpo.progresso, 'Progresso', 0, 100);
   const nota = corpo.nota === undefined ? atual.nota : inteiroEntre(corpo.nota, 'Nota', 0, 10);
   const anotacao =
     corpo.anotacao === undefined ? atual.anotacao : corpo.anotacao === '' ? '' : texto(corpo.anotacao, 'Anotação', 4000);
 
-  if (falhou(status) || falhou(progresso) || falhou(nota) || falhou(anotacao)) {
-    const primeiro = [status, progresso, nota, anotacao].find(falhou);
+  if (typeof corpo.deck_id === 'string' && corpo.deck_id.trim()) {
+    const encaixe = encaixar(userId, corpo.deck_id.trim(), atual.nome, atual.descricao);
+    if ('erro' in encaixe) {
+      res.status(400).json({ erro: encaixe.erro });
+      return;
+    }
+    deck = encaixe.deck;
+    deckId = encaixe.deck_id;
+  } else if (corpo.deck_id === null || corpo.deck_id === '') {
+    deckId = null;
+  }
+
+  if (falhou(status) || falhou(deck) || falhou(progresso) || falhou(nota) || falhou(anotacao)) {
+    const primeiro = [status, deck, progresso, nota, anotacao].find(falhou);
     res.status(400).json({ erro: primeiro?.erro ?? 'Dados inválidos.' });
     return;
   }
@@ -150,10 +215,10 @@ export function atualizar(req: RequisicaoAutenticada, res: Response): void {
   banco
     .prepare(
       `UPDATE arquivos
-       SET status = ?, progresso = ?, nota = ?, anotacao = ?, updated_at = ?
+       SET status = ?, progresso = ?, nota = ?, anotacao = ?, deck = ?, deck_id = ?, updated_at = ?
        WHERE user_id = ? AND item_id = ?`,
     )
-    .run(status, progresso, nota, anotacao, updatedAt, userId, itemId);
+    .run(status, progresso, nota, anotacao, deck, deckId, updatedAt, userId, itemId);
 
   res.status(200).json(
     arquivoPublico({
@@ -162,6 +227,8 @@ export function atualizar(req: RequisicaoAutenticada, res: Response): void {
       progresso: progresso as number,
       nota: nota as number,
       anotacao: anotacao as string,
+      deck: deck as string,
+      deck_id: deckId,
       updated_at: updatedAt,
     }),
   );
