@@ -95,12 +95,23 @@ Rede de escola e rede de visitante costumam bloquear aparelhos entre si. Se o ce
 
 ### 4. Subir o aplicativo
 
-Em outro terminal, a partir da raiz do repositório:
+O Expo não fica na raiz `Holocron`. O `package.json` do app está em `mobile`. Por isso `npx expo start` digitado em `C:\Users\luana\Desktop\Holocron` responde que `package.json` não existe.
+
+Na raiz, depois do `.env` do mobile configurado, o atalho é:
+
+```powershell
+npm start
+```
+
+Esse comando entra em `mobile` e sobe o Metro. A API continua no outro terminal (`npm run api` na raiz, ou `npm run dev` dentro de `backend`).
+
+O caminho direto, equivalente:
 
 ```powershell
 cd mobile
 copy .env.example .env
 npm install
+npx expo start
 ```
 
 Abra `mobile/.env` e troque `SEU_IP_LOCAL` pelo endereço escolhido na tabela acima. Exemplo para celular físico:
@@ -140,6 +151,7 @@ Para encerrar, feche os dois terminais com Ctrl+C. Na próxima vez, não precisa
 
 ### Quando algo não abre
 
+- `The expected package.json path: ...\Holocron\package.json does not exist` ao rodar `npx expo start` na raiz: entre em `mobile` (`cd mobile`) e rode de novo, ou use `npm start` na raiz.
 - `node:sqlite` ou erro de módulo nativo: o Node é anterior ao 22. Instale o LTS atual e abra um terminal novo.
 - `JWT_SECRET ausente ou curto demais`: o `.env` do backend não existe ou a chave tem menos de 32 caracteres.
 - `{"ok":true}` não responde: o primeiro terminal não está na pasta `backend`, ou a porta 3000 está ocupada.

@@ -1,0 +1,9 @@
+{
+  "name": "holocron",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix mobile start",
+    "web": "npm --prefix mobile run web",
+    "api": "npm --prefix backend run dev"
+  }
+}
