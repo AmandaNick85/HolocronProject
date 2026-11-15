@@ -28,7 +28,7 @@ const VAZIO_ULTIMA: UltimaLeitura = { nome: '', categoria: 'characters' };
 export default function Enciclopedia() {
   const tema = useTema();
   const online = useOnline();
-  const { obter, dominioMedio } = useHolocron();
+  const { obter, decks } = useHolocron();
   const coluna = useColuna();
   const [categoriaBruta, definirCategoria] = usePersistedState<string>(CHAVES.categoria, 'characters');
   const [historico, definirHistorico] = usePersistedState<string[]>(CHAVES.buscas, []);
@@ -182,7 +182,6 @@ export default function Enciclopedia() {
             titulo={ROTULO_CATEGORIA[categoria]}
             linha={linhaUltima}
             contagem={carregando && itens.length === 0 ? '—' : String(total)}
-            dominio={dominioMedio}
           >
             <CampoBusca valor={texto} onChangeText={setTexto} />
             {texto.length === 0 && buscas.length > 0 ? (
@@ -223,8 +222,9 @@ export default function Enciclopedia() {
               descricao={item.description}
               imagem={item.image}
               categoria={categoria}
+              deck={salvo?.deck}
+              nomeDeck={decks.find((baralho) => baralho.id === salvo?.deck_id)?.nome}
               status={salvo?.status}
-              progresso={salvo?.progresso}
               nota={salvo?.nota}
               onPress={() => abrir(item)}
             />

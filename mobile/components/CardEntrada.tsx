@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fonte } from '../constants/theme';
 import { useTema } from '../hooks/useTema';
-import { ROTULO_CATEGORIA, type Categoria, type StatusEstudo } from '../types/starwars';
+import { ROTULO_CATEGORIA, ROTULO_DECK, type Categoria, type DeckId, type StatusEstudo } from '../types/starwars';
 import { Moldura } from './Moldura';
 
 interface Props {
@@ -11,12 +11,13 @@ interface Props {
   imagem: string;
   categoria: Categoria;
   status?: StatusEstudo;
-  progresso?: number;
+  deck?: DeckId | 'avulso';
+  nomeDeck?: string;
   nota?: number;
   onPress: () => void;
 }
 
-export function CardEntrada({ nome, descricao, imagem, categoria, status, progresso, nota, onPress }: Props) {
+export function CardEntrada({ nome, descricao, imagem, categoria, status, deck, nomeDeck, nota, onPress }: Props) {
   const tema = useTema();
   const [imagemFalhou, setImagemFalhou] = useState(false);
   const mostrarFoto = Boolean(imagem) && !imagemFalhou;
@@ -51,10 +52,13 @@ export function CardEntrada({ nome, descricao, imagem, categoria, status, progre
             <Text style={[estilos.resumo, { color: tema.textoSecundario }]} numberOfLines={2}>
               {descricao || 'Sem descrição nesta ficha.'}
             </Text>
-            {status ? (
+            {deck && deck !== 'avulso' ? (
+              <Text style={[estilos.estudo, { color: tema.tinta }]} numberOfLines={1}>
+                {nomeDeck ? `${nomeDeck} · ${ROTULO_DECK[deck]}` : ROTULO_DECK[deck]}
+              </Text>
+            ) : status ? (
               <Text style={[estilos.estudo, { color: tema.tinta }]} numberOfLines={1}>
                 {status}
-                {typeof progresso === 'number' ? `  ${progresso}%` : ''}
               </Text>
             ) : null}
           </View>

@@ -86,12 +86,7 @@ export async function indiceCategoria(categoria: Categoria): Promise<EntradaResu
     while (seguir && page <= 40) {
       const dados = await pedir(`/${categoria}`, { page, limit: 100 });
       const pagina = paginaDe(dados, page);
-      todos.push(
-        ...pagina.data.map((item) => ({
-          ...item,
-          description: item.description.slice(0, 180),
-        })),
-      );
+      todos.push(...pagina.data);
       seguir = Boolean(pagina.info.next);
       page += 1;
     }
@@ -130,53 +125,248 @@ function util(valor: unknown): string | null {
   return limpo;
 }
 
-function genero(valor: unknown): string | null {
-  const bruto = util(valor);
-  if (!bruto) {
-    return null;
-  }
-  const mapa: Record<string, string> = {
-    male: 'masculino',
-    female: 'feminino',
-    hermaphrodite: 'hermafrodita',
-    none: 'nenhum',
-  };
-  return mapa[bruto.toLowerCase()] ?? bruto;
+const TRADUCAO: Record<string, string> = {
+  male: 'masculino',
+  female: 'feminino',
+  hermaphrodite: 'hermafrodita',
+  none: 'nenhum',
+  blond: 'loiro',
+  blonde: 'loira',
+  fair: 'clara',
+  light: 'clara',
+  blue: 'azul',
+  brown: 'castanho',
+  black: 'preto',
+  white: 'branco',
+  green: 'verde',
+  yellow: 'amarelo',
+  red: 'vermelho',
+  grey: 'cinza',
+  gray: 'cinza',
+  hazel: 'avelã',
+  orange: 'laranja',
+  pink: 'rosa',
+  gold: 'dourado',
+  pale: 'pálida',
+  tan: 'bronzeada',
+  dark: 'escura',
+  metal: 'metálico',
+  arid: 'árido',
+  temperate: 'temperado',
+  tropical: 'tropical',
+  frozen: 'congelado',
+  murky: 'turvo',
+  hot: 'quente',
+  humid: 'úmido',
+  windy: 'ventoso',
+  desert: 'deserto',
+  deserts: 'desertos',
+  grasslands: 'campos',
+  mountains: 'montanhas',
+  jungle: 'selva',
+  jungles: 'selvas',
+  rainforests: 'floresta tropical',
+  ocean: 'oceano',
+  oceans: 'oceanos',
+  tundra: 'tundra',
+  ice: 'gelo',
+  'ice caves': 'cavernas de gelo',
+  cityscape: 'urbano',
+  swamp: 'pântano',
+  swamps: 'pântanos',
+  rocky: 'rochoso',
+  barren: 'estéril',
+  forests: 'florestas',
+  lakes: 'lagos',
+  grassy: 'gramado',
+  hills: 'colinas',
+  mammal: 'mamífero',
+  mammals: 'mamíferos',
+  reptile: 'réptil',
+  reptilian: 'reptiliano',
+  amphibian: 'anfíbio',
+  insectoid: 'insetoide',
+  sentient: 'senciente',
+  artificial: 'artificial',
+  gastropod: 'gastrópode',
+  standard: 'padrão',
+};
+
+const ROTULO_CAMPO: Record<string, string> = {
+  height: 'Altura',
+  mass: 'Massa',
+  hair_color: 'Cabelo',
+  skin_color: 'Pele',
+  eye_color: 'Olhos',
+  birth_year: 'Nascimento',
+  gender: 'Gênero',
+  homeworld: 'Planeta natal',
+  films: 'Filmes',
+  species: 'Espécie',
+  vehicles: 'Veículos',
+  starships: 'Naves',
+  rotation_period: 'Rotação',
+  orbital_period: 'Órbita',
+  diameter: 'Diâmetro',
+  climate: 'Clima',
+  gravity: 'Gravidade',
+  terrain: 'Terreno',
+  surface_water: 'Água na superfície',
+  population: 'População',
+  residents: 'Habitantes',
+  classification: 'Classificação',
+  designation: 'Designação',
+  average_height: 'Altura média',
+  average_lifespan: 'Expectativa de vida',
+  language: 'Idioma',
+  skin_colors: 'Peles',
+  hair_colors: 'Cabelos',
+  eye_colors: 'Olhos',
+  people: 'Pessoas',
+  model: 'Modelo',
+  manufacturer: 'Fabricante',
+  cost_in_credits: 'Custo',
+  length: 'Comprimento',
+  max_atmosphering_speed: 'Velocidade máxima',
+  crew: 'Tripulação',
+  passengers: 'Passageiros',
+  cargo_capacity: 'Carga',
+  consumables: 'Suprimentos',
+  hyperdrive_rating: 'Hiperpropulsor',
+  MGLT: 'MGLT',
+  starship_class: 'Classe',
+  vehicle_class: 'Classe',
+  pilots: 'Pilotos',
+};
+
+const ORDEM: Record<string, string[]> = {
+  people: ['height', 'mass', 'hair_color', 'skin_color', 'eye_color', 'birth_year', 'gender', 'homeworld', 'species', 'films', 'vehicles', 'starships'],
+  planets: ['rotation_period', 'orbital_period', 'diameter', 'climate', 'gravity', 'terrain', 'surface_water', 'population', 'residents', 'films'],
+  species: ['classification', 'designation', 'average_height', 'average_lifespan', 'language', 'skin_colors', 'hair_colors', 'eye_colors', 'homeworld', 'people', 'films'],
+  starships: ['model', 'manufacturer', 'cost_in_credits', 'length', 'max_atmosphering_speed', 'crew', 'passengers', 'cargo_capacity', 'consumables', 'hyperdrive_rating', 'MGLT', 'starship_class', 'pilots', 'films'],
+  vehicles: ['model', 'manufacturer', 'cost_in_credits', 'length', 'max_atmosphering_speed', 'crew', 'passengers', 'cargo_capacity', 'consumables', 'vehicle_class', 'pilots', 'films'],
+};
+
+const IGNORAR = new Set(['name', 'created', 'edited', 'url', 'title']);
+const nomesRelacionados = new Map<string, string | null>();
+
+function traduzir(valor: string): string {
+  return valor
+    .split(',')
+    .map((parte) => {
+      const limpo = parte.trim();
+      const chave = limpo.toLowerCase();
+      if (chave in TRADUCAO) {
+        return TRADUCAO[chave];
+      }
+      return limpo;
+    })
+    .filter((parte) => parte.length > 0)
+    .join(', ');
 }
 
-function linhasDe(recurso: string, item: Record<string, unknown>): FichaTecnica['linhas'] {
-  const pares: [string, unknown][] =
-    recurso === 'people'
-      ? [
-          ['Altura', item.height ? `${item.height} cm` : null],
-          ['Massa', item.mass ? `${item.mass} kg` : null],
-          ['Nascimento', item.birth_year],
-          ['Gênero', genero(item.gender)],
-        ]
-      : recurso === 'planets'
-        ? [
-            ['Clima', item.climate],
-            ['Terreno', item.terrain],
-            ['População', item.population],
-          ]
-        : recurso === 'species'
-          ? [
-              ['Classificação', item.classification],
-              ['Idioma', item.language],
-              ['Altura média', item.average_height ? `${item.average_height} cm` : null],
-            ]
-          : [
-              ['Modelo', item.model],
-              ['Fabricante', item.manufacturer],
-              ['Classe', item.starship_class ?? item.vehicle_class],
-            ];
+function ano(valor: string): string {
+  const lido = valor.trim().match(/^([\d.]+)\s*(BBY|ABY)$/i);
+  if (!lido) {
+    return valor;
+  }
+  const quando = lido[2].toUpperCase() === 'BBY' ? 'antes da Batalha de Yavin' : 'depois da Batalha de Yavin';
+  return `${lido[1]} ${quando}`;
+}
 
-  return pares
-    .map(([rotulo, valor]) => {
-      const textoValor = util(valor);
-      return textoValor ? { rotulo, valor: textoValor } : null;
-    })
-    .filter((linha): linha is { rotulo: string; valor: string } => linha !== null);
+function comUnidade(campo: string, valor: string): string {
+  if (campo === 'height' || campo === 'average_height') {
+    return `${valor} cm`;
+  }
+  if (campo === 'mass') {
+    return `${valor} kg`;
+  }
+  if (campo === 'diameter') {
+    return `${valor} km`;
+  }
+  if (campo === 'length') {
+    return `${valor} m`;
+  }
+  if (campo === 'rotation_period') {
+    return `${valor} h`;
+  }
+  if (campo === 'orbital_period') {
+    return `${valor} dias`;
+  }
+  if (campo === 'average_lifespan') {
+    return `${valor} anos`;
+  }
+  if (campo === 'cargo_capacity') {
+    return `${valor} kg`;
+  }
+  if (campo === 'cost_in_credits') {
+    return `${valor} créditos`;
+  }
+  if (campo === 'max_atmosphering_speed') {
+    return `${valor} km/h`;
+  }
+  if (campo === 'surface_water') {
+    return `${valor}%`;
+  }
+  if (campo === 'birth_year') {
+    return ano(valor);
+  }
+  if (campo === 'population' && /^\d+$/.test(valor)) {
+    return Number(valor).toLocaleString('pt-BR');
+  }
+  return traduzir(valor);
+}
+
+async function nomeDe(url: string): Promise<string | null> {
+  if (nomesRelacionados.has(url)) {
+    return nomesRelacionados.get(url) ?? null;
+  }
+  try {
+    const resposta = await swapi.get<unknown>(url);
+    const dados = resposta.data;
+    const nome =
+      dados && typeof dados === 'object'
+        ? util((dados as { title?: unknown; name?: unknown }).title) ?? util((dados as { name?: unknown }).name)
+        : null;
+    nomesRelacionados.set(url, nome);
+    return nome;
+  } catch {
+    nomesRelacionados.set(url, null);
+    return null;
+  }
+}
+
+async function valorCampo(campo: string, bruto: unknown): Promise<string | null> {
+  if (Array.isArray(bruto)) {
+    const urls = bruto.filter((item): item is string => typeof item === 'string' && item.startsWith('http'));
+    if (urls.length === 0) {
+      return null;
+    }
+    const nomes = (await Promise.all(urls.map((url) => nomeDe(url)))).filter((item): item is string => Boolean(item));
+    return nomes.length > 0 ? nomes.join(', ') : null;
+  }
+  if (typeof bruto === 'string' && bruto.startsWith('http')) {
+    return nomeDe(bruto);
+  }
+  const textoValor = util(bruto);
+  return textoValor ? comUnidade(campo, textoValor) : null;
+}
+
+async function linhasDe(recurso: string, item: Record<string, unknown>): Promise<FichaTecnica['linhas']> {
+  const ordem = ORDEM[recurso] ?? [];
+  const chaves = [...ordem, ...Object.keys(item).filter((chave) => !ordem.includes(chave) && !IGNORAR.has(chave))];
+  const linhas: FichaTecnica['linhas'] = [];
+  for (const campo of chaves) {
+    if (IGNORAR.has(campo) || !(campo in item)) {
+      continue;
+    }
+    const valor = await valorCampo(campo, item[campo]);
+    if (!valor) {
+      continue;
+    }
+    linhas.push({ rotulo: ROTULO_CAMPO[campo] ?? campo, valor });
+  }
+  return linhas;
 }
 
 async function buscarRecurso(recurso: string, nome: string): Promise<Record<string, unknown> | null> {
@@ -204,11 +394,11 @@ async function buscarRecurso(recurso: string, nome: string): Promise<Record<stri
 
 export async function complementoSwapi(categoria: Categoria, nome: string): Promise<FichaTecnica | null> {
   const recursos =
-    categoria === 'characters'
+    categoria === 'characters' || categoria === 'droids'
       ? ['people']
       : categoria === 'locations'
         ? ['planets']
-        : categoria === 'species'
+        : categoria === 'species' || categoria === 'creatures'
           ? ['species']
           : categoria === 'vehicles'
             ? ['starships', 'vehicles']
@@ -224,12 +414,12 @@ export async function complementoSwapi(categoria: Categoria, nome: string): Prom
       if (!item) {
         continue;
       }
-      const linhas = linhasDe(recurso, item);
+      const linhas = await linhasDe(recurso, item);
       if (linhas.length === 0) {
-        return null;
+        continue;
       }
-      const origem = recurso === 'starships' ? 'naves' : recurso === 'people' ? 'pessoas' : recurso;
-      return { origem: `SWAPI · ${origem}`, linhas };
+      const origem = 'Dados';
+      return { origem, linhas };
     }
     return null;
   } catch {

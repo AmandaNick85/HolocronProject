@@ -9,6 +9,7 @@ import { useHolocron } from '../../contexts/HolocronContext';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useTema } from '../../hooks/useTema';
 import { CHAVES, ehPolitica, type PoliticaConflito } from '../../services/chaves';
+import { ROTULO_DECK, ehDeck } from '../../types/starwars';
 
 const POLITICAS: { id: PoliticaConflito; rotulo: string }[] = [
   { id: 'manual', rotulo: 'Escolher' },
@@ -61,10 +62,10 @@ export default function Conflitos() {
             <View style={estilos.card}>
               <Text style={[estilos.nome, { color: tema.texto }]}>{item.nome}</Text>
               <Text style={[estilos.detalhe, { color: tema.textoSecundario }]}>
-                Local: {item.local.status}, {item.local.progresso}%, nota {item.local.nota}
+                Local: {ehDeck(item.local.deck) ? ROTULO_DECK[item.local.deck] : 'Sem deck'}, {item.local.progresso}%
               </Text>
               <Text style={[estilos.detalhe, { color: tema.textoSecundario }]}>
-                Servidor: {item.remoto.status}, {item.remoto.progresso}%, nota {item.remoto.nota}
+                Servidor: {ehDeck(item.remoto.deck) ? ROTULO_DECK[item.remoto.deck] : 'Sem deck'}, {item.remoto.progresso}%
               </Text>
               <Botao rotulo="Ficar com o aparelho" onPress={() => void resolver(item.itemId, 'local')} desabilitado={ocupado === item.itemId} />
               <Botao rotulo="Ficar com o servidor" secundario onPress={() => void resolver(item.itemId, 'remoto')} desabilitado={ocupado === item.itemId} />

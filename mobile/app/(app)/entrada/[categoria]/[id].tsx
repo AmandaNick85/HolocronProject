@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Botao } from '../../../../components/Botao';
+import { CampoTexto } from '../../../../components/Campos';
 import { EstadoErro, EstadoVazio } from '../../../../components/Estados';
 import { fonte } from '../../../../constants/theme';
 import { useHolocron } from '../../../../contexts/HolocronContext';
@@ -19,7 +20,14 @@ import { useTema } from '../../../../hooks/useTema';
 import { CHAVES } from '../../../../services/chaves';
 import { gravar } from '../../../../services/storage';
 import { complementoSwapi, obterEntrada } from '../../../../services/databank';
-import { ehCategoria, ROTULO_CATEGORIA, type Categoria, type FichaTecnica } from '../../../../types/starwars';
+import { ladoDaCarta } from '../../../../services/lado';
+import {
+  ehCategoria,
+  ROTULO_CATEGORIA,
+  ROTULO_DECK,
+  type Categoria,
+  type FichaTecnica,
+} from '../../../../types/starwars';
 
 function unico(valor: string | string[] | undefined): string {
   if (Array.isArray(valor)) {
@@ -35,12 +43,13 @@ export default function Entrada() {
   const id = unico(params.id);
   const categoriaValida = ehCategoria(categoriaBruta);
   const categoria = (categoriaValida ? categoriaBruta : 'characters') as Categoria;
-  const { obter, adicionar, remover } = useHolocron();
-  const [aberta, setAberta] = useState(false);
+  const { obter, adicionar, atualizar, remover, decks, criarDeck } = useHolocron();
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [imagemFalhou, setImagemFalhou] = useState(false);
   const [ficha, setFicha] = useState<FichaTecnica | null>(null);
+  const [nomeDeck, setNomeDeck] = useState('');
+  const [criarOutro, setCriarOutro] = useState(false);
 
   const buscar = useCallback(() => obterEntrada(categoria, id), [categoria, id]);
   const { dados, carregando, erro, recarregar } = useFetch(buscar);
@@ -69,7 +78,17 @@ export default function Entrada() {
     };
   }, [dados, categoria]);
 
-  async function alternarGuarda() {
+  const lado = useMemo(
+    () => (dados ? ladoDaCarta(`${dados.name}\n${dados.description}`) : null),
+    [dados],
+  );
+  const compativeis = useMemo(
+    () => (lado ? decks.filter((item) => item.faccao === lado) : []),
+    [decks, lado],
+  );
+  const deckAtual = decks.find((item) => item.id === salvo?.deck_id) ?? null;
+
+  async function colocar(proximo: string) {
     if (!dados) {
       return;
     }
@@ -77,30 +96,52 @@ export default function Entrada() {
     setEnviando(true);
     try {
       if (salvo) {
-        await remover(salvo.item_id);
+        const baralho = decks.find((item) => item.id === proximo);
+        if (!baralho) {
+          return;
+        }
+        await atualizar(salvo.item_id, { deck: baralho.faccao, deck_id: baralho.id });
       } else {
-        await adicionar({ entrada: dados, categoria });
+        await adicionar({ entrada: dados, categoria, deckId: proximo });
       }
     } catch (falha) {
-      setAviso(falha instanceof Error ? falha.message : 'Não foi possível atualizar o arquivo.');
+      setAviso(falha instanceof Error ? falha.message : 'Não foi possível colocar a carta no deck.');
     } finally {
       setEnviando(false);
     }
   }
 
-  async function abrirEstudo() {
-    if (!dados) {
+  async function criarEAdicionar() {
+    if (!dados || !lado) {
       return;
     }
     setAviso(null);
     setEnviando(true);
     try {
+      const deck = await criarDeck(nomeDeck, lado);
       if (!salvo) {
-        await adicionar({ entrada: dados, categoria });
+        await adicionar({ entrada: dados, categoria, deckId: deck.id });
+      } else {
+        await atualizar(salvo.item_id, { deck: deck.faccao, deck_id: deck.id });
       }
-      router.push({ pathname: '/(app)/editar-modal', params: { itemId: dados._id } });
+      setNomeDeck('');
     } catch (falha) {
-      setAviso(falha instanceof Error ? falha.message : 'Guarde a entrada antes de anotar.');
+      setAviso(falha instanceof Error ? falha.message : 'Não foi possível criar o deck.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function tirar() {
+    if (!salvo) {
+      return;
+    }
+    setAviso(null);
+    setEnviando(true);
+    try {
+      await remover(salvo.item_id);
+    } catch (falha) {
+      setAviso(falha instanceof Error ? falha.message : 'Não foi possível tirar a carta.');
     } finally {
       setEnviando(false);
     }
@@ -114,7 +155,7 @@ export default function Entrada() {
     );
   }
 
-  const longa = (dados?.description.length ?? 0) > 280;
+  const outros = compativeis.filter((item) => item.id !== deckAtual?.id);
 
   return (
     <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['top', 'left', 'right']}>
@@ -149,41 +190,69 @@ export default function Entrada() {
             </View>
           </View>
           <Text style={[estilos.nome, { color: tema.texto }]}>{dados.name}</Text>
-          {salvo ? (
+          {deckAtual ? (
             <Text style={[estilos.estudo, { color: tema.tinta }]}>
-              {salvo.status}  {salvo.progresso}%  nota {salvo.nota}
+              No deck {deckAtual.nome} · {ROTULO_DECK[deckAtual.faccao]}
             </Text>
-          ) : null}
-          <Text
-            style={[estilos.lore, { color: tema.texto }]}
-            numberOfLines={aberta || !longa ? undefined : 6}
-          >
+          ) : lado ? (
+            <Text style={[estilos.estudo, { color: tema.textoSecundario }]}>
+              Carta {ROTULO_DECK[lado]}. Toque no deck para colocar.
+            </Text>
+          ) : (
+            <Text style={[estilos.estudo, { color: tema.textoSecundario }]}>
+              Esta ficha não tem lado, então não entra em deck.
+            </Text>
+          )}
+          <Text style={[estilos.lore, { color: tema.texto }]}>
             {dados.description || 'A enciclopédia não trouxe uma descrição para esta ficha.'}
           </Text>
-          {longa ? (
-            <Pressable accessibilityRole="button" onPress={() => setAberta((valor) => !valor)}>
-              <Text style={[estilos.expandir, { color: tema.tinta }]}>
-                {aberta ? 'Recolher a história' : 'Ler a história completa'}
-              </Text>
-            </Pressable>
+          {lado && !deckAtual && compativeis.length > 0
+            ? compativeis.map((item) => (
+                <Botao
+                  key={item.id}
+                  rotulo={enviando ? 'Colocando…' : `Adicionar a ${item.nome}`}
+                  onPress={() => void colocar(item.id)}
+                  desabilitado={enviando}
+                />
+              ))
+            : null}
+          {lado && deckAtual
+            ? outros.map((item) => (
+                <Botao
+                  key={item.id}
+                  rotulo={enviando ? 'Movendo…' : `Mover para ${item.nome}`}
+                  onPress={() => void colocar(item.id)}
+                  desabilitado={enviando}
+                  secundario
+                />
+              ))
+            : null}
+          {lado && (compativeis.length === 0 || criarOutro) ? (
+            <View style={estilos.criar}>
+              <CampoTexto
+                rotulo={`Nome do deck ${ROTULO_DECK[lado]}`}
+                valor={nomeDeck}
+                onChangeText={setNomeDeck}
+              />
+              <Botao
+                rotulo={enviando ? 'Criando…' : deckAtual ? 'Criar e mover' : 'Criar deck e adicionar'}
+                onPress={() => void criarEAdicionar()}
+                desabilitado={enviando || nomeDeck.trim().length < 2}
+                secundario={compativeis.length > 0}
+              />
+            </View>
+          ) : lado ? (
+            <Botao rotulo="Criar outro deck" onPress={() => setCriarOutro(true)} secundario desabilitado={enviando} />
           ) : null}
-          <Botao
-            rotulo={enviando ? 'Atualizando…' : salvo ? 'Remover do Holocron' : 'Guardar no Holocron'}
-            onPress={() => void alternarGuarda()}
-            desabilitado={enviando}
-            secundario={Boolean(salvo)}
-          />
-          <Botao
-            rotulo="Anotações e progresso"
-            onPress={() => void abrirEstudo()}
-            desabilitado={enviando}
-          />
+          {deckAtual ? (
+            <Botao rotulo={enviando ? 'Tirando…' : 'Tirar do deck'} onPress={() => void tirar()} desabilitado={enviando} secundario />
+          ) : null}
           {aviso ? <Text style={[estilos.aviso, { color: tema.perigo }]}>{aviso}</Text> : null}
           {ficha ? (
             <View style={[estilos.ficha, { borderColor: tema.tintaFraca }]}>
               <Text style={[estilos.fichaTitulo, { color: tema.texto }]}>{ficha.origem}</Text>
               {ficha.linhas.map((linha) => (
-                <Text key={linha.rotulo} style={[estilos.fichaLinha, { color: tema.textoSecundario }]}>
+                <Text key={`${linha.rotulo}-${linha.valor}`} style={[estilos.fichaLinha, { color: tema.textoSecundario }]}>
                   {linha.rotulo}  <Text style={{ color: tema.texto }}>{linha.valor}</Text>
                 </Text>
               ))}
@@ -264,6 +333,9 @@ const estilos = StyleSheet.create({
   aviso: {
     fontFamily: fonte.texto,
     fontSize: 16,
+  },
+  criar: {
+    gap: 8,
   },
   ficha: {
     borderWidth: 1,

@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BannerOffline, EstadoErro, EstadoVazio } from '../../../components/Estados';
+import { Botao } from '../../../components/Botao';
+import { CampoTexto } from '../../../components/Campos';
 import { CardEntrada } from '../../../components/CardEntrada';
 import { PainelEstudo } from '../../../components/PainelEstudo';
 import { fonte } from '../../../constants/theme';
@@ -12,33 +14,51 @@ import { useOnline } from '../../../hooks/useOnline';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import { useTema } from '../../../hooks/useTema';
 import { CHAVES } from '../../../services/chaves';
-import { STATUS_ESTUDO, type StatusEstudo } from '../../../types/starwars';
+import { DECKS, ehDeck, ROTULO_DECK, type DeckId } from '../../../types/starwars';
 import { Moldura } from '../../../components/Moldura';
 
-type Filtro = 'Todos' | StatusEstudo;
+type Filtro = 'Todos' | DeckId;
 
-const FILTROS: Filtro[] = ['Todos', ...STATUS_ESTUDO];
+const FILTROS: Filtro[] = ['Todos', ...DECKS];
 
 function ehFiltro(valor: string): valor is Filtro {
-  return valor === 'Todos' || (STATUS_ESTUDO as readonly string[]).includes(valor);
+  return valor === 'Todos' || ehDeck(valor);
+}
+
+function rotuloFiltro(filtro: Filtro): string {
+  return filtro === 'Todos' ? 'Todos' : ROTULO_DECK[filtro];
 }
 
 export default function MeuHolocron() {
   const tema = useTema();
   const online = useOnline();
-  const { arquivos, carregando, erro, recarregar, dominioMedio, contagem } = useHolocron();
+  const { arquivos, decks, carregando, erro, recarregar, criarDeck, removerDeck } = useHolocron();
   const coluna = useColuna();
   const [filtroBruto, definirFiltro] = usePersistedState<string>(CHAVES.filtro, 'Todos');
   const filtro: Filtro = ehFiltro(filtroBruto) ? filtroBruto : 'Todos';
   const [atualizando, setAtualizando] = useState(false);
+  const [nome, setNome] = useState('');
+  const [deckAberto, setDeckAberto] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
+  const [formulario, setFormulario] = useState(false);
 
-  const visiveis = useMemo(
-    () => (filtro === 'Todos' ? arquivos : arquivos.filter((item) => item.status === filtro)),
-    [arquivos, filtro],
-  );
+  const doLado = filtro === 'Todos' ? decks : decks.filter((item) => item.faccao === filtro);
+  const aberto = doLado.find((item) => item.id === deckAberto) ?? null;
+  const mostrarFormulario = formulario || decks.length === 0;
 
-  const recente = arquivos[0]?.nome ?? 'Nenhuma entrada guardada';
-  const totalFiltro = filtro === 'Todos' ? arquivos.length : contagem[filtro];
+  const visiveis = useMemo(() => {
+    if (aberto) {
+      return arquivos.filter((item) => item.deck_id === aberto.id);
+    }
+    if (filtro === 'Todos') {
+      return [];
+    }
+    return arquivos.filter((item) => item.deck === filtro && !item.deck_id);
+  }, [aberto, arquivos, filtro]);
+
+  const recente = aberto?.nome ?? arquivos[0]?.nome ?? 'Nenhum deck aberto';
+  const totalFiltro = aberto || filtro !== 'Todos' ? visiveis.length : arquivos.length;
 
   async function atualizar() {
     setAtualizando(true);
@@ -46,6 +66,34 @@ export default function MeuHolocron() {
       await recarregar();
     } finally {
       setAtualizando(false);
+    }
+  }
+
+  async function criar() {
+    if (filtro === 'Todos') {
+      setAviso('Escolha o lado antes de criar o deck.');
+      return;
+    }
+    setCriando(true);
+    setAviso(null);
+    try {
+      await criarDeck(nome, filtro);
+      setNome('');
+      setFormulario(false);
+    } catch (falha) {
+      setAviso(falha instanceof Error ? falha.message : 'Não foi possível criar o deck.');
+    } finally {
+      setCriando(false);
+    }
+  }
+
+  async function apagar(id: string) {
+    setAviso(null);
+    try {
+      await removerDeck(id);
+      setDeckAberto(null);
+    } catch (falha) {
+      setAviso(falha instanceof Error ? falha.message : 'Não foi possível apagar o deck.');
     }
   }
 
@@ -63,23 +111,23 @@ export default function MeuHolocron() {
           void atualizar();
         }}
         ListHeaderComponent={
-          <PainelEstudo titulo="Arquivo" linha={recente} contagem={String(totalFiltro)} dominio={dominioMedio}>
-            <View style={estilos.filtros}>
+          <PainelEstudo titulo="Decks" linha={recente} contagem={String(totalFiltro)}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtros}>
               {FILTROS.map((item) => {
                 const ativo = item === filtro;
-                const quantidade = item === 'Todos' ? arquivos.length : contagem[item];
+                const quantidade = item === 'Todos' ? arquivos.length : arquivos.filter((carta) => carta.deck === item).length;
                 return (
                   <Pressable
                     key={item}
                     accessibilityRole="button"
                     accessibilityState={{ selected: ativo }}
+                    accessibilityLabel={rotuloFiltro(item)}
                     onPress={() => definirFiltro(item)}
-                    style={estilos.filtro}
                   >
                     <Moldura preenchido={ativo} semSombra>
                       <View style={estilos.filtroMiolo}>
                         <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
-                          {item}
+                          {rotuloFiltro(item)}
                         </Text>
                         <Text style={[estilos.filtroNumero, { color: tema.tinta }]}>{quantidade}</Text>
                       </View>
@@ -87,7 +135,71 @@ export default function MeuHolocron() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
+            {decks.length > 0 ? (
+              <Botao
+                rotulo={formulario ? 'Fechar' : 'Novo deck'}
+                onPress={() => setFormulario((atual) => !atual)}
+                secundario={formulario}
+              />
+            ) : null}
+            {mostrarFormulario ? (
+              <View style={estilos.criar}>
+                <Text style={[estilos.dica, { color: tema.textoSecundario }]}>
+                  {filtro === 'Todos'
+                    ? 'Escolha o lado acima. A carta só entra num deck desse mesmo lado.'
+                    : `Este deck só recebe cartas ${ROTULO_DECK[filtro]}.`}
+                </Text>
+                <CampoTexto rotulo="Nome do deck" valor={nome} onChangeText={setNome} />
+                <Botao
+                  rotulo={criando ? 'Criando…' : filtro === 'Todos' ? 'Escolha o lado' : 'Criar deck'}
+                  onPress={() => void criar()}
+                  desabilitado={criando || filtro === 'Todos' || nome.trim().length < 2}
+                />
+              </View>
+            ) : null}
+            {doLado.map((item) => {
+              const ativo = item.id === aberto?.id;
+              const quantidade = arquivos.filter((carta) => carta.deck_id === item.id).length;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: ativo }}
+                  accessibilityLabel={`${item.nome}, ${ROTULO_DECK[item.faccao]}, ${quantidade} cartas`}
+                  onPress={() => setDeckAberto(ativo ? null : item.id)}
+                >
+                  <Moldura preenchido={ativo} semSombra>
+                    <View style={estilos.deckLinha}>
+                      <View style={estilos.deckTexto}>
+                        <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
+                          {item.nome}
+                        </Text>
+                        <Text style={[estilos.filtroNumero, { color: tema.textoSecundario }]}>{ROTULO_DECK[item.faccao]}</Text>
+                      </View>
+                      <Text style={[estilos.filtroNumero, { color: tema.tinta }]}>
+                        {quantidade} {quantidade === 1 ? 'carta' : 'cartas'}
+                      </Text>
+                    </View>
+                  </Moldura>
+                </Pressable>
+              );
+            })}
+            {aberto ? (
+              <View style={estilos.criar}>
+                <Botao rotulo="Buscar cartas na enciclopédia" onPress={() => router.navigate('/(app)/(tabs)')} secundario />
+                <Botao
+                  rotulo="Apagar deck"
+                  onPress={() => void apagar(aberto.id)}
+                  secundario
+                  desabilitado={arquivos.some((carta) => carta.deck_id === aberto.id)}
+                />
+                {arquivos.some((carta) => carta.deck_id === aberto.id) ? (
+                  <Text style={[estilos.dica, { color: tema.textoSecundario }]}>Tire as cartas antes de apagar o deck.</Text>
+                ) : null}
+              </View>
+            ) : null}
+            {aviso ? <Text style={[estilos.dica, { color: tema.perigo }]}>{aviso}</Text> : null}
           </PainelEstudo>
         }
         ListEmptyComponent={
@@ -95,12 +207,14 @@ export default function MeuHolocron() {
             <ActivityIndicator color={tema.tinta} style={estilos.espera} />
           ) : erro ? (
             <EstadoErro mensagem={erro} onTentar={() => void recarregar()} />
-          ) : (
+          ) : !aberto && filtro === 'Todos' && decks.length > 0 ? undefined : (
             <EstadoVazio
               mensagem={
-                arquivos.length === 0
-                  ? 'Seu arquivo ainda está vazio. Abra uma entrada na enciclopédia e guarde para estudar.'
-                  : 'Nada com esse status no arquivo.'
+                decks.length === 0
+                  ? 'Dê um nome, escolha o lado e crie o primeiro deck.'
+                  : aberto
+                    ? `Nenhuma carta em ${aberto.nome}. Abra a enciclopédia e toque em Adicionar.`
+                    : 'Nenhuma carta solta neste lado.'
               }
             />
           )
@@ -111,8 +225,9 @@ export default function MeuHolocron() {
             descricao={item.descricao}
             imagem={item.imagem_url}
             categoria={item.categoria}
+            deck={item.deck}
+            nomeDeck={decks.find((baralho) => baralho.id === item.deck_id)?.nome}
             status={item.status}
-            progresso={item.progresso}
             nota={item.nota}
             onPress={() =>
               router.push({
@@ -150,16 +265,13 @@ const estilos = StyleSheet.create({
   },
   filtros: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
-  },
-  filtro: {
-    flexGrow: 1,
-    flexBasis: 140,
+    paddingVertical: 4,
   },
   filtroMiolo: {
+    minWidth: 112,
     minHeight: 56,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 2,
   },
@@ -170,5 +282,24 @@ const estilos = StyleSheet.create({
   filtroNumero: {
     fontFamily: fonte.mono,
     fontSize: 14,
+  },
+  deckLinha: {
+    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deckTexto: {
+    flex: 1,
+    gap: 2,
+  },
+  dica: {
+    fontFamily: fonte.texto,
+    fontSize: 16,
+  },
+  criar: {
+    gap: 8,
   },
 });

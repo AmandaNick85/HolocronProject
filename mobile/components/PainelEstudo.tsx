@@ -3,18 +3,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fonte } from '../constants/theme';
 import { useGaveta } from '../contexts/GavetaContext';
 import { useTema } from '../hooks/useTema';
-import { Medidor } from './Medidor';
 import { SeletorAlianca } from './SeletorAlianca';
 
 interface Props {
   titulo: string;
   linha: string;
   contagem: string;
-  dominio: number;
   children?: ReactNode;
 }
 
-export function PainelEstudo({ titulo, linha, contagem, dominio, children }: Props) {
+export function PainelEstudo({ titulo, linha, contagem, children }: Props) {
   const tema = useTema();
   const { abrir } = useGaveta();
 
@@ -31,7 +29,6 @@ export function PainelEstudo({ titulo, linha, contagem, dominio, children }: Pro
       </View>
       <SeletorAlianca />
       <View style={estilos.linha}>
-        <Medidor valor={dominio} />
         <View style={estilos.texto}>
           <Text
             style={[estilos.titulo, { color: tema.texto }]}
