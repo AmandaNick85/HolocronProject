@@ -1,7 +1,7 @@
 # Projeto para avaliação P2 da Disciplina de Desenvolvimento de aplicativos híbridos
 # Turma 7º período - Engenharia de Software Univassouras - Campus Maricá
 # Professor Marcio Alexandre Dias Garrido
-# Alunos: Amanda Nick, Bruno Barral e Luana Zenha
+# Alunos: Amanda Nick e Luana Zenha
 
 # Holocron
 
