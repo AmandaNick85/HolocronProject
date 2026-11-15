@@ -1,6 +1,6 @@
 # Holocron
 
-Enciclopédia de Star Wars para estudar no celular. O catálogo público vem da Star Wars Databank. O que a pessoa decide guardar — status, progresso, nota e anotação — fica numa conta própria, numa API deste repositório, e continua no aparelho quando a rede cai.
+Enciclopédia de Star Wars no celular. O catálogo público vem da Star Wars Databank. A pessoa cria decks por lado — Jedi, Sith, Aliança Rebelde, Império, República, Separatistas, Mandalorianos ou Caçadores de Recompensa — e cada carta só entra num deck do próprio lado. A conta e os decks ficam numa API deste repositório e continuam no aparelho quando a rede cai.
 
 São dois programas. O `backend` é a API. O `mobile` é o aplicativo. Eles sobem em terminais separados. O celular só fala com a API. A API só fala com o arquivo SQLite dela. O aplicativo nunca abre o banco do servidor.
 
@@ -53,7 +53,7 @@ DATABASE_PATH=./data/holocron.db
 
 `JWT_SECRET` assina o token de login. Troque o texto do exemplo por outra frase longa, com pelo menos 32 caracteres, antes de usar fora da sua máquina. Se a chave tiver menos de 32 caracteres, o servidor recusa a assinar.
 
-`DATABASE_PATH` é o arquivo SQLite da API. O valor `./data/holocron.db` cria a pasta `backend/data` na primeira execução. Esse arquivo também fica fora do Git. Apagar `backend/data` zera usuários e arquivos de estudo. As tabelas são criadas de novo sozinhas na próxima subida.
+`DATABASE_PATH` é o arquivo SQLite da API. O valor `./data/holocron.db` cria a pasta `backend/data` na primeira execução. Esse arquivo também fica fora do Git. Apagar `backend/data` zera usuários, decks e cartas. As tabelas são criadas de novo sozinhas na próxima subida. Uma base antiga ganha as colunas `deck` e `deck_id`, e a tabela `decks`, na primeira subida desta versão.
 
 Quando der certo, o terminal mostra:
 
@@ -75,7 +75,7 @@ A resposta esperada é `{"ok":true}`.
 
 ### 3. Descobrir o endereço que o celular enxerga
 
-No celular, `localhost` e `127.0.0.1` apontam para o próprio celular, não para o computador. Por isso o aplicativo precisa do IP da máquina na rede local.
+No celular, `localhost` e `127.0.0.1` apontam para o próprio celular, não para o computador. No Expo Go, se `EXPO_PUBLIC_API_URL` for `http://127.0.0.1:3000` ou `http://localhost:3000`, o app troca esse host pelo IP que o Metro já está usando (o mesmo do QR Code) e mantém a porta. No navegador, `127.0.0.1` continua apontando para a própria máquina, o que é o certo. Se o celular ainda não alcançar a API, o firewall do Windows pode estar bloqueando a porta 3000, ou o Metro não publicou um IP da rede local. Nesse caso, grave o IPv4 direto no `.env`.
 
 No PowerShell:
 
@@ -114,7 +114,7 @@ npm install
 npx expo start
 ```
 
-Abra `mobile/.env` e troque `SEU_IP_LOCAL` pelo endereço escolhido na tabela acima. Exemplo para celular físico:
+O exemplo já vem com `http://127.0.0.1:3000`. No Expo Go, o app troca esse host pelo IP do Metro (o mesmo do QR Code) e mantém a porta 3000. Deixe assim, a menos que o celular não alcance a API. Aí grave o IPv4 direto:
 
 ```text
 EXPO_PUBLIC_API_URL=http://192.168.0.12:3000
@@ -143,9 +143,9 @@ Mudou o `.env` do mobile? Pare o Metro com Ctrl+C e rode `npx expo start` de nov
 
 1. Na primeira tela, crie uma conta. A senha precisa de 8 a 72 caracteres.
 2. O login devolve um token. O app guarda esse token e abre a enciclopédia.
-3. Escolha uma categoria, abra uma ficha e guarde no Holocron.
-4. Em Anotações e progresso, avance 25%, escolha o status, a nota de 0 a 10 e escreva a anotação.
-5. A aba Meu Holocron lista só o que essa conta guardou.
+3. Em Meu Holocron, escolha um lado e crie um deck com nome. Criar ou apagar deck precisa da API no ar.
+4. Abra uma ficha. O app lê o nome e a descrição e mostra só os decks daquele lado. Um toque em **Adicionar a [deck]** coloca a carta. Se ainda não houver deck daquele lado, o nome se cria na própria ficha.
+5. A ficha mostra a descrição inteira da Databank. Quando o nome existe na SWAPI, entram também os dados dela: altura, planeta, filmes, clima, fabricante e o restante, com os nomes no lugar dos links. Organização não tem essa ficha extra.
 
 Para encerrar, feche os dois terminais com Ctrl+C. Na próxima vez, não precisa instalar de novo: `npm run dev` no backend e `npx expo start` no mobile, desde que os `.env` continuem lá.
 
@@ -161,29 +161,29 @@ Para encerrar, feche os dois terminais com Ctrl+C. Na próxima vez, não precisa
 
 ## Arquitetura
 
-O sistema tem três lados. Dois são nossos. O terceiro é a Databank, só de leitura.
+O sistema tem a API e o aplicativo deste repositório, mais duas fontes públicas só de leitura: a Databank e a SWAPI.
 
 ```text
 celular ou navegador                         computador
 ┌─────────────────────────┐                 ┌──────────────────────────┐
 │  Apresentação           │                 │  Express                 │
-│  telas, listas, tema    │   HTTP JSON     │  rotas /auth e /arquivos │
+│  telas, listas, tema    │   HTTP JSON     │  /auth, /arquivos, /decks│
 │                         │ ──────────────► │                          │
 │  Estado                 │   Bearer JWT    │  bcrypt + JWT HS256      │
-│  sessão e arquivo       │                 │                          │
+│  sessão, cartas, decks  │                 │                          │
 │                         │                 │  SQLite do servidor      │
-│  Dados locais           │                 │  usuarios + arquivos     │
+│  Dados locais           │                 │  usuarios, decks, cartas │
 │  SQLite, cache, cofre   │                 └──────────────────────────┘
 └───────────┬─────────────┘
             │ HTTPS, sem token
             ▼
-   Star Wars Databank
-   catálogo público
+   Star Wars Databank          SWAPI (swapi.py4e.com)
+   nome, descrição, imagem     ficha técnica, se o nome coincidir
 ```
 
 ### Apresentação
 
-Fica em `mobile/app` e `mobile/components`. Cada arquivo dentro de `mobile/app` vira uma rota. Os grupos `(auth)` e `(app)` organizam login e área logada sem aparecer no endereço. As abas são Enciclopédia e Meu Holocron. A ficha é uma rota dinâmica `entrada/[categoria]/[id]`. Anotações abrem em modal.
+Fica em `mobile/app` e `mobile/components`. Cada arquivo dentro de `mobile/app` vira uma rota. Os grupos `(auth)` e `(app)` organizam login e área logada sem aparecer no endereço. As abas são Enciclopédia e Meu Holocron. A ficha é uma rota dinâmica `entrada/[categoria]/[id]`. Meu Holocron lista os decks por lado. A ficha só oferece decks do mesmo lado da carta.
 
 O visual está em `mobile/constants/theme.ts`: fundo preto no escuro, cinza-frio no claro, tinta azul, verde ou vermelho. `DESIGN.md` registra a paleta e as fontes (Audiowide no nome HOLOCRON, Rajdhani na interface, Share Tech Mono nos números).
 
@@ -192,9 +192,9 @@ O visual está em `mobile/constants/theme.ts`: fundo preto no escuro, cinza-frio
 Dois contextos, e só esses dois, guardam o que várias telas precisam ao mesmo tempo.
 
 - `AuthContext` guarda a pessoa logada e as claims do token (algoritmo, `userId`, expiração). A senha não fica no estado. O token bruto não é mostrado na tela.
-- `HolocronContext` guarda a lista de estudo, a média de domínio e os conflitos entre o aparelho e o servidor.
+- `HolocronContext` guarda as cartas arquivadas, os decks da conta e os conflitos entre o aparelho e o servidor.
 
-Texto de busca, nota ainda não salva e rascunho de anotação ficam no estado da própria tela. A anotação também grava um rascunho local cerca de 500 ms depois da digitação, para não perder o texto se o modal fechar antes do botão Guardar.
+Texto de busca e o nome de um deck ainda não criado ficam no estado da própria tela.
 
 A splash só some depois que as fontes carregam e a sessão termina de ser lida do armazenamento. Sem isso, o app piscaria a tela de login e em seguida pularia para dentro.
 
@@ -202,7 +202,7 @@ A splash só some depois que as fontes carregam e a sessão termina de ser lida 
 
 | Módulo | Função |
 | --- | --- |
-| `mobile/services/starWarsApi.ts` e `databank.ts` | Catálogo público. Não enviam token. |
+| `mobile/services/starWarsApi.ts` e `databank.ts` | Catálogo público e ficha da SWAPI. Não enviam token. |
 | `mobile/services/backendApi.ts` | API própria. Coloca `Authorization: Bearer` em tudo, menos em `/auth/`. Se a API responde 401 com token, encerra a sessão. |
 | `mobile/services/cache.ts` | Cache de 30 minutos da Databank. Se a rede falha e existe cache velho, mostra o cache. |
 | `mobile/services/database.ts` | SQLite do aparelho e fila do que ainda não subiu. |
@@ -217,7 +217,8 @@ Fora do laboratório, `EXPO_PUBLIC_API_URL` precisa ser `https://`. Em desenvolv
 backend/src/server.ts                  Express, CORS, JSON e rotas
 backend/src/database/conexao.ts        arquivo SQLite e criação das tabelas
 backend/src/utils/jwt.ts               assina e verifica o token
-backend/src/utils/validar.ts           limites de e-mail, senha, status e nota
+backend/src/utils/validar.ts           limites de e-mail, senha, lado e nota
+backend/src/utils/lado.ts              lê o lado da carta pelo nome e pela descrição
 backend/src/middlewares/authMiddleware.ts  lê o Bearer e preenche userId
 backend/src/controllers                  cadastro, login e CRUD do arquivo
 mobile/app                               rotas
@@ -229,7 +230,13 @@ mobile/hooks                             tema, rede, largura e lista
 
 ## Banco de dados
 
-Existem dois SQLite. Eles não são o mesmo arquivo e não se copiam disco a disco. O que viaja entre eles é JSON, pelas rotas `/arquivos`.
+Existem dois SQLite. Eles não são o mesmo arquivo e não se copiam disco a disco. O que viaja entre eles é JSON, pelas rotas `/arquivos` e `/decks`.
+
+Não há ORM. Não existe Prisma, TypeORM, Sequelize, Drizzle nem um modelo que vire SQL sozinho. Cada consulta é uma string SQL escrita no código, com `?` no lugar dos valores.
+
+Na API, `backend/src/database/conexao.ts` abre o arquivo com `DatabaseSync` de `node:sqlite`. Os controllers chamam `obterBanco().prepare(...).run()`, `.get()` ou `.all()`. `prepare` compila a sentença. `run` grava. `get` devolve uma linha. `all` devolve a lista. O objeto TypeScript `ArquivoRegistro` só descreve a linha depois que o SQLite responde. Ele não cria tabela nem traduz a consulta.
+
+No aparelho, `mobile/services/database.ts` usa `expo-sqlite`: `execAsync` para criar as tabelas e `runAsync` / `getAllAsync` para o resto. No navegador, `database.web.ts` guarda o mesmo formato no AsyncStorage, porque o SQLite nativo não entra no bundle web. O contrato continua sendo SQL no celular e JSON na API.
 
 O `backend/docker-compose.yml` sobe um PostgreSQL 17 se alguém quiser um banco separado no futuro. A API que este repositório executa não conecta nesse Postgres. Subir o projeto não depende de Docker.
 
@@ -247,24 +254,38 @@ Tabela `usuarios`:
 | `senha_hash` | Hash bcrypt. A senha em claro não é gravada |
 | `criado_em` | Data em ISO |
 
-Tabela `arquivos`, um registro de estudo por pessoa e por ficha da Databank:
+Tabela `decks`, um baralho nomeado dentro de um lado:
+
+| Coluna | Papel |
+| --- | --- |
+| `id` | UUID, chave primária |
+| `user_id` | Dono. Chave estrangeira para `usuarios.id`, com `ON DELETE CASCADE` |
+| `nome` | Nome dado pela pessoa, até 40 caracteres |
+| `faccao` | `jedi`, `sith`, `rebeldes`, `imperio`, `republica`, `separatistas`, `mandalorianos` ou `cacadores` |
+| `criado_em` | Data em ISO |
+
+Tabela `arquivos`, uma carta por pessoa e por ficha da Databank:
 
 | Coluna | Papel |
 | --- | --- |
 | `id` | UUID interno, não vai na resposta |
 | `user_id` | Dono. Chave estrangeira para `usuarios.id`, com `ON DELETE CASCADE` |
 | `item_id` | Identificador da ficha na Databank |
-| `categoria` | `characters`, `locations`, `vehicles`, `droides`, `species`, `creatures` ou `organizations` |
-| `nome`, `imagem_url`, `descricao` | Cópia da ficha no momento em que foi guardada |
-| `status` | `Para Explorar`, `Estudando`, `Dominado` ou `Favorito` |
-| `progresso` | Inteiro de 0 a 100 |
+| `categoria` | `characters`, `locations`, `vehicles`, `droids`, `species`, `creatures` ou `organizations` |
+| `nome`, `imagem_url`, `descricao` | Cópia da ficha no momento em que foi guardada. A descrição não é cortada |
+| `deck` | Lado da carta: um dos slugs de `faccao`, ou `avulso` quando a carta não está num deck nomeado |
+| `deck_id` | Deck da pessoa, ou vazio. Precisa ser um deck do mesmo lado que o texto da carta |
+| `status` | `Para Explorar`, `Estudando`, `Dominado` ou `Favorito`. A coluna permanece; as telas atuais não pedem esse passo |
+| `progresso` | Inteiro de 0 a 100. A coluna permanece; o medidor saiu das telas |
 | `nota` | Inteiro de 0 a 10 |
 | `anotacao` | Texto, até 4000 caracteres |
 | `updated_at` | Data ISO da última gravação |
 
 O par `(user_id, item_id)` é único. A mesma pessoa não guarda a mesma ficha duas vezes. Outra conta pode guardar a mesma ficha, porque o `item_id` sozinho não é único. A listagem filtra `WHERE user_id = ?`. Uma conta não lê nem apaga o arquivo de outra.
 
-As consultas usam `?` no lugar de concatenar texto. O índice `idx_arquivos_usuario` cobre a lista de uma pessoa ordenada por `updated_at`.
+As consultas usam `?` no lugar de concatenar texto. O índice `idx_arquivos_usuario` cobre a lista de uma pessoa ordenada por `updated_at`. O índice `idx_decks_usuario` cobre os decks da conta.
+
+Ao criar ou mover uma carta com `deck_id`, o servidor lê o nome e a descrição e calcula o lado. Jedi e Sith pesam mais do que Império e Aliança quando o texto cita os dois. Se o lado não bater com a `faccao` do deck, a resposta é 400. Carta sem lado reconhecido também recebe 400. Apagar um deck que ainda tem carta responde 409.
 
 A resposta pública do arquivo não inclui `id` nem `user_id`. A resposta pública do usuário não inclui `senha_hash`.
 
@@ -272,7 +293,9 @@ A resposta pública do arquivo não inclui `id` nem `user_id`. A resposta públi
 
 No celular o arquivo se chama `holocron.db` e fica no sandbox do app, aberto por `expo-sqlite`. No navegador, o mesmo formato é espelhado no AsyncStorage, porque o SQLite nativo não sobe no bundle web.
 
-Tabela `arquivos`: as mesmas colunas de estudo da API, com `item_id` como chave primária. Não há `user_id` aqui. O banco do aparelho é da sessão atual. Ao sair da conta, as tabelas locais são esvaziadas.
+Tabela `arquivos`: as mesmas colunas da carta na API, com `item_id` como chave primária. Não há `user_id` aqui. O banco do aparelho é da sessão atual. Ao sair da conta, as tabelas locais são esvaziadas.
+
+Tabela `decks`: `id`, `nome` e `faccao`. É a cópia local dos decks da conta. Criar e apagar deck exige rede, porque o `id` nasce no servidor. Uma carta pode entrar na fila offline se o deck já existir.
 
 Tabela `sync_queue`, o que ainda não chegou ao servidor:
 
@@ -286,7 +309,7 @@ Tabela `sync_queue`, o que ainda não chegou ao servidor:
 
 A fila sai na ordem do `id`. Um `409` em criação, um `404` em remoção ou um `400` descarta aquele item. Falha de rede ou erro 5xx interrompe e tenta de novo quando a conexão volta. Enquanto a fila não esvazia, o app não substitui a cópia local pela lista do servidor, para não apagar uma edição que ainda não subiu.
 
-Se os dois lados já têm a ficha e o status, o progresso, a nota ou a anotação divergem, o item vira conflito. A política padrão é perguntar na tela Conflitos: ficar com o aparelho, ficar com o servidor, ficar com a escrita de `updated_at` mais recente, ou mesclar. A mescla junta as anotações e fica com o maior progresso e a maior nota. Dá para trocar a política para a próxima sincronização decidir sozinha.
+Se os dois lados já têm a carta e o lado, o deck, o status, a nota ou a anotação divergem, o item vira conflito. A política padrão é perguntar na tela Conflitos: ficar com o aparelho, ficar com o servidor, ficar com a escrita de `updated_at` mais recente, ou mesclar. A mescla fica com o deck da escrita mais recente quando os dois discordam. Dá para trocar a política para a próxima sincronização decidir sozinha.
 
 ### O que não é tabela
 
@@ -302,7 +325,7 @@ O token antigo `holocron_jwt_token` e as chaves sem versão são lidos uma vez e
 1. `POST /auth/register` ou `POST /auth/login` recebe e-mail e senha. O cadastro também recebe o nome.
 2. A senha é conferida com bcrypt. O servidor devolve `{ user, token }`.
 3. O token é JWT HS256, válido por 7 dias. O payload leva `userId` e a expiração. Não leva senha, e-mail nem segredo.
-4. Nas rotas de arquivo, o header é `Authorization: Bearer <token>`.
+4. Nas rotas de carta e de deck, o header é `Authorization: Bearer <token>`.
 5. O middleware verifica a assinatura com `JWT_SECRET` e usa o `userId` em toda consulta.
 
 Cadastro duplicado responde 409. Senha errada responde 401. Rota sem token, ou com token inválido, responde 401.
@@ -316,8 +339,11 @@ Cadastro duplicado responde 409. Senha errada responde 401. Rota sem token, ou c
 | POST | `/auth/login` | não | `200 { user, token }` |
 | GET | `/arquivos` | Bearer | `200` lista só daquela conta |
 | POST | `/arquivos` | Bearer | `201`, ou `409` se a ficha já existe |
-| PUT | `/arquivos/:itemId` | Bearer | `200` atualiza status, progresso, nota e anotação |
+| PUT | `/arquivos/:itemId` | Bearer | `200` atualiza a carta, inclusive `deck` e `deck_id` |
 | DELETE | `/arquivos/:itemId` | Bearer | `200`, ou `404` se não for dessa conta |
+| GET | `/decks` | Bearer | `200` lista os decks da conta |
+| POST | `/decks` | Bearer | `201 { id, nome, faccao, criado_em }` |
+| DELETE | `/decks/:id` | Bearer | `200`, `404` se não for dessa conta, ou `409` se ainda houver carta |
 
 Corpo para criar um arquivo:
 
@@ -328,10 +354,22 @@ Corpo para criar um arquivo:
   "nome": "Luke Skywalker",
   "imagem_url": "https://exemplo.com/luke.jpg",
   "descricao": "Jedi.",
+  "deck_id": "uuid-do-deck-jedi",
   "status": "Para Explorar",
   "progresso": 0,
   "nota": 0,
   "anotacao": ""
+}
+```
+
+`deck_id` é opcional para uma carta antiga. Quando ele vem preenchido, o servidor ignora um `deck` mentido e grava o lado do texto, se esse lado for o do deck.
+
+Corpo para criar um deck:
+
+```json
+{
+  "nome": "Conselho de Yavin",
+  "faccao": "jedi"
 }
 ```
 
@@ -365,6 +403,6 @@ Na pasta `mobile`:
 npm test
 ```
 
-Cobre a leitura das claims, a escolha entre escrita local e remota, a regra de HTTPS e os estados de tela vazia e de erro.
+Cobre a leitura das claims, a escolha entre escrita local e remota, o lado e o deck no conflito, a regra de HTTPS e os estados de tela vazia e de erro.
 
 `npm run auditoria`, em cada pasta, executa `npm audit`.
