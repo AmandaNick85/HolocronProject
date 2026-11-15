@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { useTema } from '../hooks/useTema'; // 1. IMPORTAÇÃO DO SEU HOOK
 
 interface Star {
   id: number;
@@ -10,16 +11,16 @@ interface Star {
   color: string;
 }
 
-// Cores das estrelas alinhadas com o tom espacial e detalhes da interface
 const STAR_COLORS = ['#FFFFFF', '#3EC6FF', '#A3D5FF', '#CFE8FF', '#E8F4F8'];
 
 export function StarryBackground({ children }: { children: React.ReactNode }) {
+  const { colors } = useTema(); // 2. PUXA AS CORES DO SEU HOOK
   const { width, height } = Dimensions.get('window');
   const twinkleAnim = useRef(new Animated.Value(0.4)).current;
 
   // Gera posições fixas das estrelas
   const stars = useMemo<Star[]>(() => {
-    const count = 75; // Quantidade equilibrada para o datapad
+    const count = 75; 
     return Array.from({ length: count }, (_, i) => ({
       id: i,
       top: Math.random() * Math.max(height, 900),
@@ -49,7 +50,8 @@ export function StarryBackground({ children }: { children: React.ReactNode }) {
   }, [twinkleAnim]);
 
   return (
-    <View style={styles.container}>
+    {/* 3. APLICANDO A COR DINÂMICA DO TEMA COM UM FALLBACK SE PRECISAR */}
+    <View style={[styles.container, { backgroundColor: colors?.background || '#07090C' }]}>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {stars.map((star, index) => {
           const starStyle = {
@@ -83,7 +85,7 @@ export function StarryBackground({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07090C', // Cor exata de fundo escuro do DESIGN.md
+    // Removido o backgroundColor fixo daqui para ser controlado dinamicamente acima
   },
   star: {
     position: 'absolute',
