@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { HolocronProvider } from '../contexts/HolocronContext';
 import { useTema } from '../hooks/useTema';
+import { StarryBackground } from '../components/StarryBackground'; // <-- Importe o componente aqui
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -36,15 +37,16 @@ function Navegacao() {
   }
 
   return (
-    <>
-      <StatusBar style={tema.modo === 'dark' ? 'light' : 'dark'} />
+    <StarryBackground>
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: tema.fundo },
+          // Deixamos 'transparent' para as estrelas aparecerem atrás de todas as telas
+          contentStyle: { backgroundColor: 'transparent' }, 
         }}
       />
-    </>
+    </StarryBackground>
   );
 }
 
