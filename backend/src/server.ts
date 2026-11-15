@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { obterBanco } from './database/conexao';
 import { arquivosRoutes } from './routes/arquivos.routes';
 import { authRoutes } from './routes/auth.routes';
+import { decksRoutes } from './routes/decks.routes';
 
 const porta = Number(process.env.PORT ?? 3000);
 
@@ -23,6 +24,7 @@ app.get('/saude', (_req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/arquivos', arquivosRoutes);
+app.use('/decks', decksRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada.' });
