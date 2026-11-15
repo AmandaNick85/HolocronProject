@@ -1,3 +1,8 @@
+# Projeto para avaliação P2 da Disciplina de Desenvolvimento de aplicativos híbridos
+# Turma 7º período - Engenharia de Software Univassouras - Campus Maricá
+# Professor Marcio Alexandre Dias Garrido
+# Alunos: Amanda Nick, Bruno Barral e Luana Zenha
+
 # Holocron
 
 Enciclopédia de Star Wars no celular. O catálogo público vem da Star Wars Databank. A pessoa cria decks por lado — Jedi, Sith, Aliança Rebelde, Império, República, Separatistas, Mandalorianos ou Caçadores de Recompensa — e cada carta só entra num deck do próprio lado. A conta e os decks ficam numa API deste repositório e continuam no aparelho quando a rede cai.
