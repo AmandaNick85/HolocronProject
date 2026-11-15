@@ -1,8 +1,13 @@
 import axios, { type AxiosError } from 'axios';
-import { urlApiPermitida } from './rede';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+import { urlApiPermitida, urlParaAparelho } from './rede';
 import { CHAVE_TOKEN, lerSegredo } from './seguro';
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:3000';
+const configurada = process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:3000';
+const hostDoMetro = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost ?? null;
+
+const baseURL = urlParaAparelho(configurada, Platform.OS, hostDoMetro);
 
 if (!urlApiPermitida(baseURL, typeof __DEV__ === 'undefined' ? false : __DEV__)) {
   throw new Error('A API do Holocron precisa de HTTPS fora do laboratório local.');
@@ -53,7 +58,7 @@ export function mensagemHttp(erro: unknown, reserva: string): string {
       }
     }
     if (!erro.response) {
-      return 'Sem rede para alcançar o Holocron.';
+      return `Sem rede para alcançar o Holocron em ${baseURL}.`;
     }
   }
   if (erro instanceof Error && erro.message) {
