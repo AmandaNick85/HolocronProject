@@ -1,0 +1,23 @@
+# PostgreSQL 17 opcional. A API entregue grava em SQLite (veja DATABASE_PATH)
+# para subir no Windows sem Docker. Este arquivo fica pronto para quem for
+# apontar uma camada Postgres própria para o mesmo esquema.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: holocron-postgres
+    environment:
+      POSTGRES_USER: holocron
+      POSTGRES_PASSWORD: holocron
+      POSTGRES_DB: holocron
+    ports:
+      - "5432:5432"
+    volumes:
+      - holocron_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U holocron -d holocron"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  holocron_pg:
