@@ -150,7 +150,7 @@ export default function Entrada() {
 
   if (!categoriaValida || !id) {
     return (
-      <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]}>
+      <SafeAreaView style={estilos.tela}>
         <EstadoVazio mensagem="Categoria ou ficha inválida." />
       </SafeAreaView>
     );
@@ -159,7 +159,7 @@ export default function Entrada() {
   const outros = compativeis.filter((item) => item.id !== deckAtual?.id);
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['top', 'left', 'right']}>
       <View style={estilos.topo}>
         <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} hitSlop={8}>
           <Text style={[estilos.voltar, { color: tema.tinta }]}>←</Text>

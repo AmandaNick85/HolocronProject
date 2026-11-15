@@ -70,7 +70,7 @@ export default function EditarModal() {
 
   if (carregando || (arquivo && !formularioPronto)) {
     return (
-      <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]}>
+      <SafeAreaView style={estilos.tela}>
         <ActivityIndicator color={tema.tinta} />
       </SafeAreaView>
     );
@@ -78,7 +78,7 @@ export default function EditarModal() {
 
   if (!arquivo) {
     return (
-      <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]}>
+      <SafeAreaView style={estilos.tela}>
         <EstadoVazio mensagem="Esta entrada saiu do Holocron." />
         <Botao rotulo="Fechar" onPress={() => router.back()} />
       </SafeAreaView>
@@ -111,7 +111,7 @@ export default function EditarModal() {
   }
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['bottom', 'left', 'right']}>
       <KeyboardAvoidingView style={estilos.flex} behavior={comportamentoTeclado}>
         <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
           <Text style={[estilos.nome, { color: tema.texto }]} numberOfLines={2}>

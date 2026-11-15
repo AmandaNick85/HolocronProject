@@ -19,7 +19,7 @@ function BarraAbas({ state, navegar }: BarraProps) {
       style={[
         estilos.barra,
         {
-          backgroundColor: tema.fundo,
+          backgroundColor: tema.painel,
           borderTopColor: tema.tintaFraca,
           paddingBottom: Math.max(insets.bottom, 8),
         },
@@ -56,7 +56,7 @@ export default function LayoutAbas() {
   return (
     <Tabs
       tabBar={(props) => <BarraAbas state={props.state} navegar={props.navigateToTab} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }}
     >
       <Tabs.Screen name="index" options={{ title: 'Enciclopédia' }} />
       <Tabs.Screen name="meu-holocron" options={{ title: 'Meu Holocron' }} />

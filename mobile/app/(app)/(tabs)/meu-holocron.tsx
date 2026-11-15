@@ -107,7 +107,7 @@ export default function MeuHolocron() {
   }
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['top', 'left', 'right']}>
       <BannerOffline visivel={!online} />
       <FlatList
         style={estilos.lista}

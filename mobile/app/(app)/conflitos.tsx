@@ -38,7 +38,7 @@ export default function Conflitos() {
   }
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={estilos.conteudo}>
         <Text style={[estilos.titulo, { color: tema.texto }]}>Conflitos de sincronização</Text>
         <Text style={[estilos.corpo, { color: tema.textoSecundario }]}>

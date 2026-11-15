@@ -23,11 +23,11 @@ export default function LayoutApp() {
       <View style={{ flex: 1 }}>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: tema.fundo },
+            headerStyle: { backgroundColor: tema.painel },
             headerTintColor: tema.tinta,
             headerTitleStyle: { fontFamily: fonte.textoForte, fontSize: 20, color: tema.texto },
             headerShadowVisible: false,
-            contentStyle: { backgroundColor: tema.fundo },
+            contentStyle: { backgroundColor: 'transparent' },
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

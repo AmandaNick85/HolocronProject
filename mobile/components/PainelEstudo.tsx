@@ -27,6 +27,7 @@ export function PainelEstudo({ titulo, linha, contagem, children }: Props) {
         </Text>
         <View style={estilos.menu} />
       </View>
+      <View style={[estilos.traco, { backgroundColor: tema.tintaFraca }]} />
       <SeletorAlianca />
       <View style={estilos.linha}>
         <View style={estilos.texto}>
@@ -72,9 +73,13 @@ const estilos = StyleSheet.create({
   wordmark: {
     flex: 1,
     fontFamily: fonte.wordmark,
-    fontSize: 22,
-    letterSpacing: 4,
+    fontSize: 20,
+    letterSpacing: 6,
     textAlign: 'center',
+  },
+  traco: {
+    height: 1,
+    marginHorizontal: 12,
   },
   linha: {
     flexDirection: 'row',

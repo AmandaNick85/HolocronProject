@@ -9,7 +9,7 @@ export default function Indice() {
 
   if (!pronto) {
     return (
-      <View style={[estilos.tela, { backgroundColor: tema.fundo }]}>
+      <View style={estilos.tela}>
         <ActivityIndicator color={tema.tinta} />
       </View>
     );

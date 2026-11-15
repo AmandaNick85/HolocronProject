@@ -20,7 +20,7 @@ export default function Sessao() {
   const { usuario, claims } = useAuth();
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={[estilos.conteudo, coluna]}>
         <Text style={[estilos.titulo, { color: tema.texto }]}>Sessão JWT</Text>
         <Text style={[estilos.corpo, { color: tema.textoSecundario }]}>

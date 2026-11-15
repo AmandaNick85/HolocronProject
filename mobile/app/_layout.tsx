@@ -7,6 +7,7 @@ import { Audiowide_400Regular } from '@expo-google-fonts/audiowide';
 import { Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
 import { ShareTechMono_400Regular } from '@expo-google-fonts/share-tech-mono';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Ceu } from '../components/Ceu';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { HolocronProvider } from '../contexts/HolocronContext';
 import { useTema } from '../hooks/useTema';
@@ -36,15 +37,15 @@ function Navegacao() {
   }
 
   return (
-    <>
+    <Ceu>
       <StatusBar style={tema.modo === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: tema.fundo },
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       />
-    </>
+    </Ceu>
   );
 }
 

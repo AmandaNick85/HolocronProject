@@ -102,7 +102,7 @@ export function montarTema(modo: 'light' | 'dark', alianca: Alianca): Tema {
     modo,
     alianca,
     fundo: escuro ? '#07090C' : '#D7DCE3',
-    painel: escuro ? '#10161C' : '#F7F8FA',
+    painel: escuro ? '#141C26' : '#F4F7FA',
     texto: escuro ? '#E8F4F8' : '#12171C',
     textoSecundario: tinta.secundario,
     tinta: tinta.tinta,

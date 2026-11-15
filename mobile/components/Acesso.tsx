@@ -15,7 +15,7 @@ export function Acesso({ children, rodape }: Props) {
   const tema = useTema();
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]} edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={estilos.tela} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={estilos.flex}
         behavior={comportamentoTeclado}

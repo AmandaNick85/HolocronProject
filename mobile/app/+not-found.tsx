@@ -9,7 +9,7 @@ export default function NaoEncontrada() {
   const tema = useTema();
 
   return (
-    <SafeAreaView style={[estilos.tela, { backgroundColor: tema.fundo }]}>
+    <SafeAreaView style={estilos.tela}>
       <Stack.Screen options={{ headerShown: false }} />
       <Moldura>
         <View style={estilos.miolo}>
