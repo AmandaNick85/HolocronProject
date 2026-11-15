@@ -1,5 +1,5 @@
-import type { ArquivoHolocron } from '../types/starwars';
-import { ehCategoria, ehStatus } from '../types/starwars';
+import type { ArquivoHolocron, DeckUsuario } from '../types/starwars';
+import { deckDe, ehCategoria, ehDeck, ehStatus } from '../types/starwars';
 import { backendApi, statusHttp } from './backendApi';
 import { gravar, ler } from './storage';
 
@@ -15,6 +15,7 @@ interface ItemFila {
 
 interface Espelho {
   arquivos: ArquivoHolocron[];
+  decks: DeckUsuario[];
   fila: ItemFila[];
   seq: number;
 }
@@ -22,11 +23,30 @@ interface Espelho {
 const CHAVE = 'holocron_web_db';
 
 let arquivos: ArquivoHolocron[] = [];
+let decks: DeckUsuario[] = [];
 let fila: ItemFila[] = [];
 let seq = 1;
 let pronto = false;
 let filaEmCurso: Promise<void> | null = null;
 
+function normalizar(item: ArquivoHolocron): ArquivoHolocron {
+  return {
+    ...item,
+    deck: deckDe(item.deck),
+    deck_id: typeof item.deck_id === 'string' && item.deck_id ? item.deck_id : null,
+  };
+}
+
+function paraDeck(valor: unknown): DeckUsuario | null {
+  if (!valor || typeof valor !== 'object') {
+    return null;
+  }
+  const item = valor as Partial<DeckUsuario>;
+  if (typeof item.id !== 'string' || typeof item.nome !== 'string' || typeof item.faccao !== 'string' || !ehDeck(item.faccao)) {
+    return null;
+  }
+  return { id: item.id, nome: item.nome, faccao: item.faccao };
+}
 function ehArquivo(valor: unknown): valor is ArquivoHolocron {
   if (!valor || typeof valor !== 'object') {
     return false;
@@ -54,7 +74,8 @@ async function hidratar(): Promise<void> {
   }
   const salvo = await ler<Espelho>(CHAVE);
   if (salvo && Array.isArray(salvo.arquivos) && Array.isArray(salvo.fila)) {
-    arquivos = salvo.arquivos.filter(ehArquivo);
+    arquivos = salvo.arquivos.filter(ehArquivo).map(normalizar);
+    decks = Array.isArray(salvo.decks) ? salvo.decks.map(paraDeck).filter((item): item is DeckUsuario => item !== null) : [];
     fila = salvo.fila.filter(
       (item) =>
         item &&
@@ -67,7 +88,7 @@ async function hidratar(): Promise<void> {
 }
 
 async function persistir(): Promise<void> {
-  await gravar<Espelho>(CHAVE, { arquivos, fila, seq });
+  await gravar<Espelho>(CHAVE, { arquivos, decks, fila, seq });
 }
 
 export async function iniciarBanco(): Promise<void> {
@@ -93,7 +114,7 @@ export async function removerLocal(itemId: string): Promise<void> {
 
 export async function substituirLocais(lista: ArquivoHolocron[]): Promise<void> {
   await hidratar();
-  arquivos = lista.filter(ehArquivo);
+  arquivos = lista.filter(ehArquivo).map(normalizar);
   await persistir();
 }
 
@@ -118,7 +139,7 @@ export async function contarFila(): Promise<number> {
 function lerPayload(bruto: string): ArquivoHolocron | null {
   try {
     const valor: unknown = JSON.parse(bruto);
-    return ehArquivo(valor) ? valor : null;
+    return ehArquivo(valor) ? normalizar(valor) : null;
   } catch {
     return null;
   }
@@ -142,6 +163,8 @@ async function despachar(linha: ItemFila): Promise<void> {
     progresso: payload.progresso,
     nota: payload.nota,
     anotacao: payload.anotacao,
+    deck: payload.deck,
+    deck_id: payload.deck_id,
   });
 }
 
@@ -181,10 +204,46 @@ export function sincronizarFila(): Promise<void> {
 
 export async function limparBanco(): Promise<void> {
   arquivos = [];
+  decks = [];
   fila = [];
   seq = 1;
   pronto = true;
   await persistir();
+}
+
+export async function listarDecks(): Promise<DeckUsuario[]> {
+  await hidratar();
+  return [...decks];
+}
+
+export async function substituirDecks(lista: DeckUsuario[]): Promise<void> {
+  await hidratar();
+  decks = lista.map((item) => paraDeck(item)).filter((item): item is DeckUsuario => item !== null);
+  await persistir();
+}
+
+export async function salvarDeck(deck: DeckUsuario): Promise<void> {
+  await hidratar();
+  decks = [deck, ...decks.filter((item) => item.id !== deck.id)];
+  await persistir();
+}
+
+export async function removerDeckLocal(id: string): Promise<void> {
+  await hidratar();
+  decks = decks.filter((item) => item.id !== id);
+  await persistir();
+}
+
+export async function puxarDecks(): Promise<DeckUsuario[] | null> {
+  try {
+    const resposta = await backendApi.get<unknown>('/decks');
+    if (!Array.isArray(resposta.data)) {
+      return null;
+    }
+    return resposta.data.map(paraDeck).filter((item): item is DeckUsuario => item !== null);
+  } catch {
+    return null;
+  }
 }
 
 export async function puxarServidor(): Promise<ArquivoHolocron[] | null> {
@@ -193,7 +252,7 @@ export async function puxarServidor(): Promise<ArquivoHolocron[] | null> {
     if (!Array.isArray(resposta.data)) {
       return null;
     }
-    const lista = resposta.data.filter(ehArquivo);
+    const lista = resposta.data.filter(ehArquivo).map(normalizar);
     return lista;
   } catch {
     return null;

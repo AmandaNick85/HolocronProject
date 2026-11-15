@@ -12,7 +12,9 @@ function estudoDifere(local: ArquivoHolocron, remoto: ArquivoHolocron): boolean 
     local.status !== remoto.status ||
     local.progresso !== remoto.progresso ||
     local.nota !== remoto.nota ||
-    local.anotacao !== remoto.anotacao
+    local.anotacao !== remoto.anotacao ||
+    local.deck !== remoto.deck ||
+    local.deck_id !== remoto.deck_id
   );
 }
 
@@ -46,6 +48,8 @@ export function mesclar(local: ArquivoHolocron, remoto: ArquivoHolocron): Arquiv
     progresso: Math.max(local.progresso, remoto.progresso),
     nota: Math.max(local.nota, remoto.nota),
     anotacao,
+    deck: local.deck === remoto.deck ? local.deck : recente.deck,
+    deck_id: local.deck_id === remoto.deck_id ? local.deck_id : recente.deck_id,
     updated_at: new Date(Math.max(instante(local.updated_at), instante(remoto.updated_at), Date.now())).toISOString(),
   };
 }

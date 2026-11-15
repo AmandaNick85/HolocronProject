@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
-import type { ArquivoHolocron, Categoria, StatusEstudo } from '../types/starwars';
-import { ehCategoria, ehStatus } from '../types/starwars';
+import type { ArquivoHolocron, Categoria, DeckUsuario, StatusEstudo } from '../types/starwars';
+import { deckDe, ehCategoria, ehDeck, ehStatus } from '../types/starwars';
 import { backendApi, statusHttp } from './backendApi';
 
 export type OperacaoFila = 'criar' | 'atualizar' | 'remover';
@@ -15,6 +15,8 @@ interface LinhaArquivo {
   progresso: number;
   nota: number;
   anotacao: string;
+  deck?: string;
+  deck_id?: string | null;
   updated_at: string;
 }
 
@@ -43,6 +45,8 @@ function paraArquivo(linha: LinhaArquivo): ArquivoHolocron | null {
     progresso: linha.progresso,
     nota: linha.nota,
     anotacao: linha.anotacao,
+    deck: deckDe(linha.deck),
+    deck_id: typeof linha.deck_id === 'string' && linha.deck_id ? linha.deck_id : null,
     updated_at: linha.updated_at,
   };
 }
@@ -68,7 +72,14 @@ export async function iniciarBanco(): Promise<SQLite.SQLiteDatabase> {
       progresso INTEGER NOT NULL,
       nota INTEGER NOT NULL,
       anotacao TEXT NOT NULL,
+      deck TEXT NOT NULL DEFAULT 'avulso',
+      deck_id TEXT,
       updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS decks (
+      id TEXT PRIMARY KEY NOT NULL,
+      nome TEXT NOT NULL,
+      faccao TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS sync_queue (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +89,13 @@ export async function iniciarBanco(): Promise<SQLite.SQLiteDatabase> {
       timestamp INTEGER NOT NULL
     );
   `);
+  const colunas = await db.getAllAsync<{ name: string }>('PRAGMA table_info(arquivos)');
+  if (!colunas.some((coluna) => coluna.name === 'deck')) {
+    await db.execAsync(`ALTER TABLE arquivos ADD COLUMN deck TEXT NOT NULL DEFAULT 'avulso'`);
+  }
+  if (!colunas.some((coluna) => coluna.name === 'deck_id')) {
+    await db.execAsync(`ALTER TABLE arquivos ADD COLUMN deck_id TEXT`);
+  }
   banco = db;
   return db;
 }
@@ -89,7 +107,7 @@ async function db(): Promise<SQLite.SQLiteDatabase> {
 export async function listarLocais(): Promise<ArquivoHolocron[]> {
   const conexao = await db();
   const linhas = await conexao.getAllAsync<LinhaArquivo>(
-    'SELECT item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, updated_at FROM arquivos ORDER BY updated_at DESC',
+    'SELECT item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, deck, deck_id, updated_at FROM arquivos ORDER BY updated_at DESC',
   );
   return linhas.map(paraArquivo).filter((item): item is ArquivoHolocron => item !== null);
 }
@@ -100,8 +118,8 @@ export async function salvarLocal(arquivo: ArquivoHolocron): Promise<void> {
     await conexao.runAsync('DELETE FROM arquivos WHERE item_id = ?', arquivo.item_id);
     await conexao.runAsync(
       `INSERT INTO arquivos (
-        item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, deck, deck_id, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       arquivo.item_id,
       arquivo.categoria,
       arquivo.nome,
@@ -111,6 +129,8 @@ export async function salvarLocal(arquivo: ArquivoHolocron): Promise<void> {
       arquivo.progresso,
       arquivo.nota,
       arquivo.anotacao,
+      arquivo.deck,
+      arquivo.deck_id,
       arquivo.updated_at,
     );
   });
@@ -128,8 +148,8 @@ export async function substituirLocais(lista: ArquivoHolocron[]): Promise<void> 
     for (const arquivo of lista) {
       await conexao.runAsync(
         `INSERT INTO arquivos (
-          item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          item_id, categoria, nome, imagem_url, descricao, status, progresso, nota, anotacao, deck, deck_id, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         arquivo.item_id,
         arquivo.categoria,
         arquivo.nome,
@@ -139,6 +159,8 @@ export async function substituirLocais(lista: ArquivoHolocron[]): Promise<void> 
         arquivo.progresso,
         arquivo.nota,
         arquivo.anotacao,
+        arquivo.deck,
+        arquivo.deck_id,
         arquivo.updated_at,
       );
     }
@@ -189,6 +211,8 @@ function lerPayload(bruto: string): ArquivoHolocron | null {
       progresso: typeof item.progresso === 'number' ? item.progresso : 0,
       nota: typeof item.nota === 'number' ? item.nota : 0,
       anotacao: typeof item.anotacao === 'string' ? item.anotacao : '',
+      deck: deckDe(item.deck),
+      deck_id: typeof item.deck_id === 'string' && item.deck_id ? item.deck_id : null,
       updated_at: typeof item.updated_at === 'string' ? item.updated_at : new Date().toISOString(),
     };
   } catch {
@@ -214,6 +238,8 @@ async function despachar(linha: LinhaFila): Promise<void> {
     progresso: payload.progresso,
     nota: payload.nota,
     anotacao: payload.anotacao,
+    deck: payload.deck,
+    deck_id: payload.deck_id,
   });
 }
 
@@ -256,9 +282,70 @@ export function sincronizarFila(): Promise<void> {
   return filaEmCurso;
 }
 
+function paraDeck(linha: { id: string; nome: string; faccao: string }): DeckUsuario | null {
+  if (!ehDeck(linha.faccao) || !linha.id || !linha.nome) {
+    return null;
+  }
+  return { id: linha.id, nome: linha.nome, faccao: linha.faccao };
+}
+
+export async function listarDecks(): Promise<DeckUsuario[]> {
+  const conexao = await db();
+  const linhas = await conexao.getAllAsync<{ id: string; nome: string; faccao: string }>(
+    'SELECT id, nome, faccao FROM decks ORDER BY nome COLLATE NOCASE',
+  );
+  return linhas.map(paraDeck).filter((item): item is DeckUsuario => item !== null);
+}
+
+export async function substituirDecks(lista: DeckUsuario[]): Promise<void> {
+  const conexao = await db();
+  await conexao.withTransactionAsync(async () => {
+    await conexao.runAsync('DELETE FROM decks');
+    for (const deck of lista) {
+      await conexao.runAsync('INSERT INTO decks (id, nome, faccao) VALUES (?, ?, ?)', deck.id, deck.nome, deck.faccao);
+    }
+  });
+}
+
+export async function salvarDeck(deck: DeckUsuario): Promise<void> {
+  const conexao = await db();
+  await conexao.withTransactionAsync(async () => {
+    await conexao.runAsync('DELETE FROM decks WHERE id = ?', deck.id);
+    await conexao.runAsync('INSERT INTO decks (id, nome, faccao) VALUES (?, ?, ?)', deck.id, deck.nome, deck.faccao);
+  });
+}
+
+export async function removerDeckLocal(id: string): Promise<void> {
+  const conexao = await db();
+  await conexao.runAsync('DELETE FROM decks WHERE id = ?', id);
+}
+
+export async function puxarDecks(): Promise<DeckUsuario[] | null> {
+  try {
+    const resposta = await backendApi.get<unknown>('/decks');
+    if (!Array.isArray(resposta.data)) {
+      return null;
+    }
+    return resposta.data
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const linha = item as { id?: string; nome?: string; faccao?: string };
+        if (typeof linha.id !== 'string' || typeof linha.nome !== 'string' || typeof linha.faccao !== 'string') {
+          return null;
+        }
+        return paraDeck({ id: linha.id, nome: linha.nome, faccao: linha.faccao });
+      })
+      .filter((item): item is DeckUsuario => item !== null);
+  } catch {
+    return null;
+  }
+}
+
 export async function limparBanco(): Promise<void> {
   const conexao = await db();
-  await conexao.execAsync('DELETE FROM arquivos; DELETE FROM sync_queue;');
+  await conexao.execAsync('DELETE FROM arquivos; DELETE FROM sync_queue; DELETE FROM decks;');
 }
 
 export async function puxarServidor(): Promise<ArquivoHolocron[] | null> {
