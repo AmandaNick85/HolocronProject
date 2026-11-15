@@ -29,7 +29,30 @@ interface LinhaFila {
 }
 
 let banco: SQLite.SQLiteDatabase | null = null;
+let abertura: Promise<SQLite.SQLiteDatabase> | null = null;
 let filaEmCurso: Promise<void> | null = null;
+
+function colunaDuplicada(erro: unknown): boolean {
+  const texto = erro instanceof Error ? erro.message : String(erro);
+  return texto.toLowerCase().includes('duplicate column name');
+}
+
+async function garantirColuna(db: SQLite.SQLiteDatabase, nome: string, sql: string): Promise<void> {
+  const encontradas = await db.getAllAsync<{ name: string }>(
+    `SELECT name FROM pragma_table_info('arquivos') WHERE name = ?`,
+    nome,
+  );
+  if (encontradas.some((coluna) => coluna.name === nome)) {
+    return;
+  }
+  try {
+    await db.execAsync(sql);
+  } catch (erro) {
+    if (!colunaDuplicada(erro)) {
+      throw erro;
+    }
+  }
+}
 
 function paraArquivo(linha: LinhaArquivo): ArquivoHolocron | null {
   if (!ehCategoria(linha.categoria) || !ehStatus(linha.status)) {
@@ -51,10 +74,7 @@ function paraArquivo(linha: LinhaArquivo): ArquivoHolocron | null {
   };
 }
 
-export async function iniciarBanco(): Promise<SQLite.SQLiteDatabase> {
-  if (banco) {
-    return banco;
-  }
+async function abrirBanco(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync('holocron.db');
   try {
     await db.execAsync('PRAGMA journal_mode = WAL;');
@@ -89,15 +109,23 @@ export async function iniciarBanco(): Promise<SQLite.SQLiteDatabase> {
       timestamp INTEGER NOT NULL
     );
   `);
-  const colunas = await db.getAllAsync<{ name: string }>('PRAGMA table_info(arquivos)');
-  if (!colunas.some((coluna) => coluna.name === 'deck')) {
-    await db.execAsync(`ALTER TABLE arquivos ADD COLUMN deck TEXT NOT NULL DEFAULT 'avulso'`);
-  }
-  if (!colunas.some((coluna) => coluna.name === 'deck_id')) {
-    await db.execAsync(`ALTER TABLE arquivos ADD COLUMN deck_id TEXT`);
-  }
+  await garantirColuna(db, 'deck', `ALTER TABLE arquivos ADD COLUMN deck TEXT NOT NULL DEFAULT 'avulso'`);
+  await garantirColuna(db, 'deck_id', `ALTER TABLE arquivos ADD COLUMN deck_id TEXT`);
   banco = db;
   return db;
+}
+
+export function iniciarBanco(): Promise<SQLite.SQLiteDatabase> {
+  if (banco) {
+    return Promise.resolve(banco);
+  }
+  if (!abertura) {
+    abertura = abrirBanco().catch((erro: unknown) => {
+      abertura = null;
+      throw erro;
+    });
+  }
+  return abertura;
 }
 
 async function db(): Promise<SQLite.SQLiteDatabase> {
