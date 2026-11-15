@@ -3,6 +3,7 @@ import { fonte } from '../constants/theme';
 import { useTema } from '../hooks/useTema';
 import { COR_DECK, type DeckUsuario } from '../types/starwars';
 import { Moldura } from './Moldura';
+import { SeloLado } from './SeloLado';
 
 interface Props {
   decks: DeckUsuario[];
@@ -31,6 +32,7 @@ export function SeletorDeck({ decks, ativo, onMudar }: Props) {
                 <Text style={[estilos.nome, { color: escolhido ? COR_DECK[deck.faccao] : tema.texto }]} numberOfLines={2}>
                   {deck.nome}
                 </Text>
+                <SeloLado lado={deck.faccao} />
               </View>
             </Moldura>
           </Pressable>
@@ -53,6 +55,7 @@ const estilos = StyleSheet.create({
   miolo: {
     minHeight: 56,
     justifyContent: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderLeftWidth: 4,

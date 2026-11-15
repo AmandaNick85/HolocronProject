@@ -4,6 +4,7 @@ import { fonte } from '../constants/theme';
 import { useTema } from '../hooks/useTema';
 import { ROTULO_CATEGORIA, ROTULO_DECK, type Categoria, type DeckId, type StatusEstudo } from '../types/starwars';
 import { Moldura } from './Moldura';
+import { SeloLado } from './SeloLado';
 
 interface Props {
   nome: string;
@@ -23,7 +24,11 @@ export function CardEntrada({ nome, descricao, imagem, categoria, status, deck, 
   const mostrarFoto = Boolean(imagem) && !imagemFalhou;
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={nome} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={deck && deck !== 'avulso' ? `${nome}, ${ROTULO_DECK[deck]}` : nome}
+      onPress={onPress}
+    >
       <Moldura>
         <View style={estilos.linha}>
           <View style={estilos.capa}>
@@ -53,9 +58,7 @@ export function CardEntrada({ nome, descricao, imagem, categoria, status, deck, 
               {descricao || 'Sem descrição nesta ficha.'}
             </Text>
             {deck && deck !== 'avulso' ? (
-              <Text style={[estilos.estudo, { color: tema.tinta }]} numberOfLines={1}>
-                {nomeDeck ? `${nomeDeck} · ${ROTULO_DECK[deck]}` : ROTULO_DECK[deck]}
-              </Text>
+              <SeloLado lado={deck} detalhe={nomeDeck} />
             ) : status ? (
               <Text style={[estilos.estudo, { color: tema.tinta }]} numberOfLines={1}>
                 {status}

@@ -14,7 +14,8 @@ import { useOnline } from '../../../hooks/useOnline';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import { useTema } from '../../../hooks/useTema';
 import { CHAVES } from '../../../services/chaves';
-import { DECKS, ehDeck, ROTULO_DECK, type DeckId } from '../../../types/starwars';
+import { SeloLado } from '../../../components/SeloLado';
+import { COR_DECK, DECKS, ehDeck, ROTULO_DECK, type DeckId, type DeckUsuario } from '../../../types/starwars';
 import { Moldura } from '../../../components/Moldura';
 
 type Filtro = 'Todos' | DeckId;
@@ -27,6 +28,13 @@ function ehFiltro(valor: string): valor is Filtro {
 
 function rotuloFiltro(filtro: Filtro): string {
   return filtro === 'Todos' ? 'Todos' : ROTULO_DECK[filtro];
+}
+
+function gruposDe(lista: DeckUsuario[]): { faccao: DeckId; itens: DeckUsuario[] }[] {
+  return DECKS.map((faccao) => ({
+    faccao,
+    itens: lista.filter((item) => item.faccao === faccao),
+  })).filter((grupo) => grupo.itens.length > 0);
 }
 
 export default function MeuHolocron() {
@@ -44,6 +52,7 @@ export default function MeuHolocron() {
   const [formulario, setFormulario] = useState(false);
 
   const doLado = filtro === 'Todos' ? decks : decks.filter((item) => item.faccao === filtro);
+  const grupos = gruposDe(doLado);
   const aberto = doLado.find((item) => item.id === deckAberto) ?? null;
   const mostrarFormulario = formulario || decks.length === 0;
 
@@ -126,10 +135,17 @@ export default function MeuHolocron() {
                   >
                     <Moldura preenchido={ativo} semSombra>
                       <View style={estilos.filtroMiolo}>
-                        <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
-                          {rotuloFiltro(item)}
+                        <View style={estilos.filtroCabeca}>
+                          {item !== 'Todos' ? (
+                            <View style={[estilos.ponto, { backgroundColor: COR_DECK[item] }]} />
+                          ) : null}
+                          <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
+                            {rotuloFiltro(item)}
+                          </Text>
+                        </View>
+                        <Text style={[estilos.filtroNumero, { color: item === 'Todos' ? tema.tinta : COR_DECK[item] }]}>
+                          {quantidade}
                         </Text>
-                        <Text style={[estilos.filtroNumero, { color: tema.tinta }]}>{quantidade}</Text>
                       </View>
                     </Moldura>
                   </Pressable>
@@ -158,33 +174,41 @@ export default function MeuHolocron() {
                 />
               </View>
             ) : null}
-            {doLado.map((item) => {
-              const ativo = item.id === aberto?.id;
-              const quantidade = arquivos.filter((carta) => carta.deck_id === item.id).length;
-              return (
-                <Pressable
-                  key={item.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: ativo }}
-                  accessibilityLabel={`${item.nome}, ${ROTULO_DECK[item.faccao]}, ${quantidade} cartas`}
-                  onPress={() => setDeckAberto(ativo ? null : item.id)}
-                >
-                  <Moldura preenchido={ativo} semSombra>
-                    <View style={estilos.deckLinha}>
-                      <View style={estilos.deckTexto}>
-                        <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
-                          {item.nome}
-                        </Text>
-                        <Text style={[estilos.filtroNumero, { color: tema.textoSecundario }]}>{ROTULO_DECK[item.faccao]}</Text>
-                      </View>
-                      <Text style={[estilos.filtroNumero, { color: tema.tinta }]}>
-                        {quantidade} {quantidade === 1 ? 'carta' : 'cartas'}
-                      </Text>
-                    </View>
-                  </Moldura>
-                </Pressable>
-              );
-            })}
+            {grupos.map((grupo) => (
+              <View key={grupo.faccao} style={estilos.grupo}>
+                <View style={estilos.grupoCabeca}>
+                  <View style={[estilos.grupoBarra, { backgroundColor: COR_DECK[grupo.faccao] }]} />
+                  <Text style={[estilos.grupoTitulo, { color: COR_DECK[grupo.faccao] }]}>{ROTULO_DECK[grupo.faccao]}</Text>
+                </View>
+                {grupo.itens.map((item) => {
+                  const ativo = item.id === aberto?.id;
+                  const quantidade = arquivos.filter((carta) => carta.deck_id === item.id).length;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: ativo }}
+                      accessibilityLabel={`${item.nome}, ${ROTULO_DECK[item.faccao]}, ${quantidade} cartas`}
+                      onPress={() => setDeckAberto(ativo ? null : item.id)}
+                    >
+                      <Moldura preenchido={ativo} semSombra>
+                        <View style={[estilos.deckLinha, { borderLeftColor: COR_DECK[item.faccao] }]}>
+                          <View style={estilos.deckTexto}>
+                            <Text style={[estilos.filtroTexto, { color: tema.texto }]} numberOfLines={1}>
+                              {item.nome}
+                            </Text>
+                            <SeloLado lado={item.faccao} />
+                          </View>
+                          <Text style={[estilos.filtroNumero, { color: COR_DECK[item.faccao] }]}>
+                            {quantidade} {quantidade === 1 ? 'carta' : 'cartas'}
+                          </Text>
+                        </View>
+                      </Moldura>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
             {aberto ? (
               <View style={estilos.criar}>
                 <Botao rotulo="Buscar cartas na enciclopédia" onPress={() => router.navigate('/(app)/(tabs)')} secundario />
@@ -275,6 +299,32 @@ const estilos = StyleSheet.create({
     paddingVertical: 8,
     gap: 2,
   },
+  filtroCabeca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ponto: {
+    width: 8,
+    height: 8,
+  },
+  grupo: {
+    gap: 8,
+  },
+  grupoCabeca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  grupoBarra: {
+    width: 8,
+    height: 16,
+  },
+  grupoTitulo: {
+    fontFamily: fonte.textoForte,
+    fontSize: 14,
+  },
   filtroTexto: {
     fontFamily: fonte.textoForte,
     fontSize: 14,
@@ -290,6 +340,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderLeftWidth: 4,
   },
   deckTexto: {
     flex: 1,

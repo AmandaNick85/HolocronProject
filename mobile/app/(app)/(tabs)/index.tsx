@@ -15,6 +15,7 @@ import { usePersistedState } from '../../../hooks/usePersistedState';
 import { useTema } from '../../../hooks/useTema';
 import { CHAVES } from '../../../services/chaves';
 import { filtrarPorNome, indiceCategoria, listarPagina } from '../../../services/databank';
+import { ladoDaCarta } from '../../../services/lado';
 import {
   ROTULO_CATEGORIA,
   ehCategoria,
@@ -216,13 +217,15 @@ export default function Enciclopedia() {
         }
         renderItem={({ item }) => {
           const salvo = obter(item._id);
+          const ladoSalvo = salvo && salvo.deck !== 'avulso' ? salvo.deck : null;
+          const lado = ladoSalvo ?? ladoDaCarta(`${item.name}\n${item.description}`);
           return (
             <CardEntrada
               nome={item.name}
               descricao={item.description}
               imagem={item.image}
               categoria={categoria}
-              deck={salvo?.deck}
+              deck={lado ?? undefined}
               nomeDeck={decks.find((baralho) => baralho.id === salvo?.deck_id)?.nome}
               status={salvo?.status}
               nota={salvo?.nota}

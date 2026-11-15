@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Botao } from '../../../../components/Botao';
+import { SeloLado } from '../../../../components/SeloLado';
 import { CampoTexto } from '../../../../components/Campos';
 import { EstadoErro, EstadoVazio } from '../../../../components/Estados';
 import { fonte } from '../../../../constants/theme';
@@ -191,13 +192,12 @@ export default function Entrada() {
           </View>
           <Text style={[estilos.nome, { color: tema.texto }]}>{dados.name}</Text>
           {deckAtual ? (
-            <Text style={[estilos.estudo, { color: tema.tinta }]}>
-              No deck {deckAtual.nome} · {ROTULO_DECK[deckAtual.faccao]}
-            </Text>
+            <SeloLado lado={deckAtual.faccao} detalhe={deckAtual.nome} />
           ) : lado ? (
-            <Text style={[estilos.estudo, { color: tema.textoSecundario }]}>
-              Carta {ROTULO_DECK[lado]}. Toque no deck para colocar.
-            </Text>
+            <View style={estilos.lado}>
+              <SeloLado lado={lado} />
+              <Text style={[estilos.estudo, { color: tema.textoSecundario }]}>Toque no deck para colocar.</Text>
+            </View>
           ) : (
             <Text style={[estilos.estudo, { color: tema.textoSecundario }]}>
               Esta ficha não tem lado, então não entra em deck.
@@ -316,6 +316,9 @@ const estilos = StyleSheet.create({
   nome: {
     fontFamily: fonte.titulo,
     fontSize: 32,
+  },
+  lado: {
+    gap: 8,
   },
   estudo: {
     fontFamily: fonte.mono,
