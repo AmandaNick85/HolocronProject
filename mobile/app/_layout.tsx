@@ -10,13 +10,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ceu } from '../components/Ceu';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { HolocronProvider } from '../contexts/HolocronContext';
-import { useTema } from '../hooks/useTema';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function Navegacao() {
   const { pronto } = useAuth();
-  const tema = useTema();
   const [fontes, erroFonte] = useFonts({
     Audiowide_400Regular,
     Rajdhani_500Medium,
@@ -32,26 +30,24 @@ function Navegacao() {
     }
   }, [visualPronto]);
 
-  if (!visualPronto) {
-    return null;
-  }
-
   return (
     <Ceu>
-      <StatusBar style={tema.modo === 'dark' ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: 'transparent' },
-        }}
-      />
+      <StatusBar style="light" />
+      {visualPronto ? (
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
+        />
+      ) : null}
     </Ceu>
   );
 }
 
 export default function LayoutRaiz() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#07090C' }}>
       <AuthProvider>
         <HolocronProvider>
           <Navegacao />

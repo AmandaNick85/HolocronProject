@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "scheme": "holocron",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#07090C",
     "ios": {
       "supportsTablet": true
     },
@@ -20,7 +21,8 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#07090C"
     },
     "plugins": [
       "expo-router",
