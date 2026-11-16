@@ -408,3 +408,5 @@ npm test
 Cobre a leitura das claims, a escolha entre escrita local e remota, o lado e o deck no conflito, a regra de HTTPS e os estados de tela vazia e de erro.
 
 `npm run auditoria`, em cada pasta, executa `npm audit`.
+
+Autores: Amanda Nick e Luana Zenha
