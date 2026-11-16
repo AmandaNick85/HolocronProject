@@ -1,5 +1,7 @@
 # Holocron
 
+Projeto para a avaliação P2 de Desenvolvimento de Aplicativos Híbridos, 7º período de Engenharia de Software, Univassouras, campus Maricá. Professor Marcio Alexandre Dias Garrido. Alunos: Amanda Nick e Luana Zenha.
+
 Enciclopédia de Star Wars no celular. O catálogo público vem da Star Wars Databank. A pessoa cria decks por lado — Jedi, Sith, Aliança Rebelde, Império, República, Separatistas, Mandalorianos ou Caçadores de Recompensa — e cada carta só entra num deck do próprio lado. A conta e os decks ficam numa API deste repositório e continuam no aparelho quando a rede cai.
 
 São dois programas. O `backend` é a API. O `mobile` é o aplicativo. Eles sobem em terminais separados. O celular só fala com a API. A API só fala com o arquivo SQLite dela. O aplicativo nunca abre o banco do servidor.
