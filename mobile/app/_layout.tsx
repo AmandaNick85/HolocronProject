@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -12,6 +12,15 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { HolocronProvider } from '../contexts/HolocronContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+const temaNavegacao = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: 'transparent',
+    card: 'transparent',
+  },
+};
 
 function Navegacao() {
   const { pronto } = useAuth();
@@ -48,11 +57,13 @@ function Navegacao() {
 export default function LayoutRaiz() {
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: '#07090C' }}>
-      <AuthProvider>
-        <HolocronProvider>
-          <Navegacao />
-        </HolocronProvider>
-      </AuthProvider>
+      <ThemeProvider value={temaNavegacao}>
+        <AuthProvider>
+          <HolocronProvider>
+            <Navegacao />
+          </HolocronProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

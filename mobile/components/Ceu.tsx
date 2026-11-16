@@ -40,7 +40,7 @@ export function Ceu({ children }: { children: ReactNode }) {
   return (
     <View style={[estilos.raiz, { backgroundColor: tema.fundo }]}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <View style={[estilos.aurora, { backgroundColor: tema.amostra, opacity: claro ? 0.12 : 0.22 }]} />
+        <View style={[estilos.aurora, { backgroundColor: tema.amostra, opacity: 0.08 }]} />
         {ESTRELAS.map((estrela) => {
           const cor = claro ? '#1A2430' : '#F7FBFF';
           const opacidade = claro ? Math.min(1, estrela.opacidade + 0.15) : estrela.opacidade;
@@ -98,8 +98,8 @@ const estilos = StyleSheet.create({
     position: 'absolute',
     top: -160,
     alignSelf: 'center',
-    width: 420,
-    height: 340,
+    width: 280,
+    height: 180,
     borderRadius: 210,
   },
 });
