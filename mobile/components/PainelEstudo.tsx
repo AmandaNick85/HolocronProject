@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fonte } from '../constants/theme';
 import { useGaveta } from '../contexts/GavetaContext';
 import { useTema } from '../hooks/useTema';
+import { NavePassagem } from './NavePassagem';
+import { NomeHolocron } from './NomeHolocron';
 import { SeletorAlianca } from './SeletorAlianca';
 
 interface Props {
@@ -22,12 +24,12 @@ export function PainelEstudo({ titulo, linha, contagem, children }: Props) {
         <Pressable accessibilityRole="button" accessibilityLabel="Abrir menu" onPress={abrir} style={estilos.menu}>
           <Text style={[estilos.marca, { color: tema.tinta }]}>≡</Text>
         </Pressable>
-        <Text style={[estilos.wordmark, { color: tema.tinta }]} accessibilityRole="header">
-          HOLOCRON
-        </Text>
+        <View style={estilos.nome}>
+          <NomeHolocron tamanho={26} />
+        </View>
         <View style={estilos.menu} />
       </View>
-      <View style={[estilos.traco, { backgroundColor: tema.tintaFraca }]} />
+      <NavePassagem />
       <SeletorAlianca />
       <View style={estilos.linha}>
         <View style={estilos.texto}>
@@ -70,16 +72,8 @@ const estilos = StyleSheet.create({
     fontFamily: fonte.textoForte,
     fontSize: 22,
   },
-  wordmark: {
+  nome: {
     flex: 1,
-    fontFamily: fonte.wordmark,
-    fontSize: 20,
-    letterSpacing: 6,
-    textAlign: 'center',
-  },
-  traco: {
-    height: 1,
-    marginHorizontal: 12,
   },
   linha: {
     flexDirection: 'row',

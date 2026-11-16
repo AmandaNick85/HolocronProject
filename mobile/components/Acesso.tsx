@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { comportamentoTeclado } from '../constants/plataforma';
 import { fonte } from '../constants/theme';
 import { useTema } from '../hooks/useTema';
+import { NavePassagem } from './NavePassagem';
+import { NomeHolocron } from './NomeHolocron';
 import { SeletorAlianca } from './SeletorAlianca';
 
 interface Props {
@@ -25,9 +27,8 @@ export function Acesso({ children, rodape }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={[estilos.wordmark, { color: tema.tinta }]} accessibilityRole="header">
-            HOLOCRON
-          </Text>
+          <NomeHolocron tamanho={34} />
+          <NavePassagem />
           <Text style={[estilos.frase, { color: tema.textoSecundario }]}>
             Enciclopédia para estudar a história da galáxia no seu arquivo pessoal.
           </Text>
@@ -52,12 +53,6 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-  },
-  wordmark: {
-    fontFamily: fonte.wordmark,
-    fontSize: 26,
-    letterSpacing: 4,
-    textAlign: 'center',
   },
   frase: {
     fontFamily: fonte.texto,

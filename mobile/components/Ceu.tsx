@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTema } from '../hooks/useTema';
+import { Lua } from './Lua';
 
 interface Estrela {
   id: number;
@@ -40,7 +41,6 @@ export function Ceu({ children }: { children: ReactNode }) {
   return (
     <View style={[estilos.raiz, { backgroundColor: tema.fundo }]}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <View style={[estilos.aurora, { backgroundColor: tema.amostra, opacity: 0.08 }]} />
         {ESTRELAS.map((estrela) => {
           const cor = claro ? '#1A2430' : '#F7FBFF';
           const opacidade = claro ? Math.min(1, estrela.opacidade + 0.15) : estrela.opacidade;
@@ -81,6 +81,7 @@ export function Ceu({ children }: { children: ReactNode }) {
             </View>
           );
         })}
+        <Lua />
       </View>
       <View style={estilos.conteudo}>{children}</View>
     </View>
@@ -93,13 +94,5 @@ const estilos = StyleSheet.create({
   },
   conteudo: {
     flex: 1,
-  },
-  aurora: {
-    position: 'absolute',
-    top: -160,
-    alignSelf: 'center',
-    width: 280,
-    height: 180,
-    borderRadius: 210,
   },
 });
